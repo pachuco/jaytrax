@@ -1,0 +1,165 @@
+#ifndef JXS_H
+#define JXS_H
+#include <stdint.h>
+#include "syntrax.h"
+
+#define J3457_CHANS_SUBSONG (16)
+#define J3457_ORDERS_SUBSONG (256)
+#define J3457_ROWS_PAT (64)
+#define J3457_EFF_INST (4)
+#define J3457_WAVES_INST (16)
+#define J3457_SAMPS_WAVE (256)
+#define J3457_ARPS_SONG (16)
+#define J3457_STEPS_ARP (16)
+
+typedef struct J3457Order J3457Order;
+struct J3457Order {
+    int16_t         patnr;      // welk pattern spelen...
+    int16_t         patlen;     // 0/16/32/48
+} __attribute__((__packed__));
+
+typedef struct J3457Row J3457Row;
+struct J3457Row {
+    uint8_t         srcnote;
+    uint8_t         dstnote;
+    uint8_t         inst;
+    int8_t          param;
+    uint8_t         script;
+} __attribute__((__packed__));
+
+typedef struct J3457Header J3457Header;
+struct J3457Header {
+    int16_t         mugiversion;//version of mugician this song was saved with
+    int16_t         dummy17;//!
+    int32_t         nrofpats;   //aantal patterns beschikbaar
+    int32_t         nrofsongs;  //aantal beschikbare subsongs
+    int32_t         nrofinst;   //aantal gebruikte instruments
+    int32_t         dummy0;
+    int16_t         dummy1;
+    int16_t         dummy2;
+    int16_t         dummy3;
+    int16_t         dummy4;
+    int16_t         dummy5;
+    int16_t         dummy6;
+    int16_t         dummy7;
+    int16_t         dummy8;
+    int16_t         dummy9;
+    int16_t         dummy10;
+    int16_t         dummy11;
+    int16_t         dummy12;
+    int16_t         dummy13;
+    int16_t         dummy14;
+    int16_t         dummy15;
+    int16_t         dummy16;
+} __attribute__((__packed__));
+
+typedef struct J3457Subsong J3457Subsong;
+struct J3457Subsong {
+    int32_t         dummy17[J3457_CHANS_SUBSONG];
+    uint8_t         mute[J3457_CHANS_SUBSONG];   // which channels are muted? (1=muted)
+    int32_t         songspd;    // delay tussen de pattern-stepjes
+    int32_t         groove;     // groove value... 0=nothing, 1 = swing, 2=shuffle
+    int32_t         songpos;    // waar start song? (welke maat?)
+    int32_t         songstep;   // welke patternpos offset? (1/64 van maat)
+    int32_t         endpos;     // waar stopt song? (welke maat?)
+    int32_t         endstep;    // welke patternpos offset? (1/64 van maat)
+    int32_t         looppos;    // waar looped song? (welke maat?)
+    int32_t         loopstep;   // welke patternpos offset? (1/64 van maat)
+    int16_t         songloop;   // if true, the song loops inbetween looppos and endpos
+    char            name[32];   // name of subsong
+    int16_t         nrofchans;  //nr of channels used
+    uint16_t        delaytime; // the delaytime (for the echo effect)
+    uint8_t         delayamount[J3457_CHANS_SUBSONG]; // amount per channel for the echo-effect
+    int16_t         amplification; //extra amplification factor (20 to 1000)
+//  int16_t         dummy2;
+//  int16_t         dummy3;
+//  int16_t         dummy4;
+//  int16_t         dummy5;
+//  int16_t         dummy6;
+//  int16_t         dummy7;
+//  int16_t         dummy8;
+//  int16_t         dummy9;
+//  int16_t         dummy10;
+//  int16_t         dummy11;
+    int16_t         dummy12;
+    int16_t         dummy13;
+    int16_t         dummy14;
+    int16_t         dummy15;
+    int16_t         dummy16;
+    J3457Order      orders[J3457_ORDERS_SUBSONG];
+} __attribute__((__packed__));
+
+typedef struct J3457Effect J3457Effect;
+struct J3457Effect {
+    int32_t         dsteffect;
+    int32_t         srceffect1;
+    int32_t         srceffect2;
+    int32_t         osceffect;
+    int32_t         effectvar1;
+    int32_t         effectvar2;
+    int32_t         effectspd;
+    int32_t         oscspd;
+    int32_t         effecttype;
+    int8_t          oscflg;
+    int8_t          reseteffect;
+} __attribute__((__packed__));
+
+// inst is the structure which has the entire instrument definition.
+typedef struct J3457Inst J3457Inst;
+struct J3457Inst {
+    int16_t         mugiversion;
+    char            instname[32];
+    int16_t         waveform;
+    int16_t         wavelength;
+    int16_t         mastervol;
+    int16_t         amwave;
+    int16_t         amspd;
+    int16_t         amlooppoint;
+    int16_t         finetune;
+    int16_t         fmwave;
+    int16_t         fmspd;
+    int16_t         fmlooppoint;
+    int16_t         fmdelay;
+    int16_t         arpeggio;
+    int8_t          resetwave[J3457_WAVES_INST];
+    int16_t         panwave;  
+    int16_t         panspd;
+    int16_t         panlooppoint;
+    int16_t         dummy4;     //for future stuff
+    int16_t         dummy5;
+    int16_t         dummy6;
+    int16_t         dummy7;
+    int16_t         dummy8;
+    J3457Effect     fx[J3457_EFF_INST];
+    char            samplename[192]; // path naar de gebruikte sample (was _MAX_PATH lang... is nu getruncate naar 192)(in de toekomst nog kleiner?)
+    int32_t         ldummy1;
+    int32_t         ldummy2;
+    int32_t         ldummy3;
+    int32_t         ldummy4;
+    int32_t         ldummy5;
+    int32_t         ldummy6;
+    int32_t         ldummy7;
+    int32_t         ldummy8;
+    int32_t         ldummy9;
+    int32_t         ldummy10;
+    int32_t         ldummy11;
+    int32_t         ldummy12;
+    int16_t         ldummy13;
+    int16_t         sharing;    // sample sharing! sharing contains instr nr of shared sanpledata (0=no sharing)
+    int16_t         loopflg;    //does the sample loop or play one/shot? (0=1shot)
+    int16_t         bidirecflg; // does the sample loop birdirectional? (0=no)
+    int32_t         startpoint;
+    int32_t         looppoint;
+    int32_t         endpoint;
+    int32_t         hasSampData;     // pointer naar de sample (mag 0 zijn)
+    int32_t         samplelength;      // length of sample
+    //int16_t         waves[J3457_WAVES_INST * J3457_SAMPS_WAVE];
+} __attribute__((__packed__));
+
+//---------------------JXS3458
+
+
+//---------------------
+
+int jxsfile_loadSong(char* path, Song** sngOut);
+#endif
