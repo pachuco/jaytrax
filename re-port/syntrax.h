@@ -123,4 +123,55 @@ struct Song {
     
 };
 
+//---------------------internal structs
+
+// Chanfx is an internal structure which keeps track of the current effect parameters per active channel
+typedef struct ChanFx ChanFx;
+struct ChanFx 
+{
+	int			fxcnt1;
+	int			fxcnt2;
+	int			osccnt;
+	double		a0;
+	double		b1;
+	double		b2;
+	double		y1;
+	double		y2;
+	int			Vhp;
+	int			Vbp;
+	int			Vlp;
+};
+
+// chandat is an internal structure which keeps track of the current instruemnts current variables per active channel
+typedef struct ChanDat ChanDat;
+struct ChanDat 
+{
+	int			songpos;
+	int			patpos;
+	int			instrument;
+	int			volcnt;
+	int			pancnt;
+	int			arpcnt;
+	int			curnote;
+	int			curfreq;
+	int			curvol;
+	int			curpan;
+	int			bendadd;	// for the pitchbend
+	int			destfreq;	// ...
+	int			bendspd;	// ...
+	int			bendtonote;
+	int			freqcnt;
+	int			freqdel;
+	unsigned char *sampledata;
+	int			looppoint;
+	int			endpoint;
+	short		loopflg;
+	short		bidirecflg;
+	short		curdirecflg;
+	int			samplepos;
+	int			lastplaypos;
+	ChanFx		fx[SE_WAVES_INST];
+	short		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
+};
+
 #endif
