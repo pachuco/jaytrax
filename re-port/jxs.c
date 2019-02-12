@@ -153,7 +153,7 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
     setbuf(fin, &buf);
     
     //song
-    if((song = (Song*)malloc(sizeof(Song)))) {
+    if((song = (Song*)calloc(1, sizeof(Song)))) {
         int version;
         
         if (struct_readHeader(&song->header, 1, fin)) FAIL(ERR_BADSONG);
@@ -166,26 +166,26 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
             int nrInst     = song->header.nrofinst;
             
             //subsongs
-            if ((song->subsongs = (Subsong**)malloc(nrSubsongs*sizeof(Subsong*)))) {
+            if ((song->subsongs = (Subsong**)calloc(nrSubsongs, sizeof(Subsong*)))) {
                 for (i=0; i < nrSubsongs; i++) {
-                    if ((song->subsongs[i] = (Subsong*)malloc(sizeof(Subsong)))) {
+                    if ((song->subsongs[i] = (Subsong*)calloc(1, sizeof(Subsong)))) {
                         if (struct_readSubsong(song->subsongs[i], 1, fin)) FAIL(ERR_BADSONG);
                     } else FAIL(ERR_MALLOC);
                 }
             } else FAIL(ERR_MALLOC);
             
             //patterns
-            if ((song->patterns = (Row*)malloc(nrRows*sizeof(Row)))) {
+            if ((song->patterns = (Row*)calloc(nrRows, sizeof(Row)))) {
                 if (struct_readPat(song->patterns, nrPats, fin)) FAIL(ERR_BADSONG);
             } else FAIL(ERR_MALLOC);
             
             //pattern names. Length includes \0
-            if ((song->patNames = (char**)malloc(nrPats * sizeof(char*)))) {
+            if ((song->patNames = (char**)calloc(nrPats, sizeof(char*)))) {
                 for (i=0; i < nrPats; i++) {
                     int32_t nameLen = 0;
                     
                     fread(&nameLen, 4, 1, fin);
-                    if ((song->patNames[i] = (char*)malloc(nameLen*sizeof(char)))) {
+                    if ((song->patNames[i] = (char*)calloc(nameLen, sizeof(char)))) {
                         fread(song->patNames[i], nameLen, 1, fin);
                     } else FAIL(ERR_MALLOC);
                 }
@@ -194,10 +194,10 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
             } else FAIL(ERR_MALLOC);
             
             //instruments
-            if ((song->instruments = (Inst**)malloc(nrInst*sizeof(Inst*)))) {
-                if (!(song->samples = (uint8_t**)malloc(nrInst*sizeof(uint8_t*)))) FAIL(ERR_MALLOC);
+            if ((song->instruments = (Inst**)calloc(nrInst, sizeof(Inst*)))) {
+                if (!(song->samples = (uint8_t**)calloc(nrInst, sizeof(uint8_t*)))) FAIL(ERR_MALLOC);
                 for (i=0; i < nrInst; i++) {
-                    if ((song->instruments[i] = (Inst*)malloc(sizeof(Inst)))) {
+                    if ((song->instruments[i] = (Inst*)calloc(1, sizeof(Inst)))) {
                         Inst* inst = song->instruments[i];
                         if (struct_readInst(inst, 1, fin)) FAIL(ERR_BADSONG);
                         
@@ -219,7 +219,7 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
                         
                         //sample data
                         if (inst->hasSampData) {
-                            if(!(song->samples[i] = (uint8_t*)malloc(inst->samplelength*sizeof(uint8_t)))) FAIL(ERR_MALLOC);
+                            if(!(song->samples[i] = (uint8_t*)calloc(inst->samplelength, sizeof(uint8_t)))) FAIL(ERR_MALLOC);
                             fread(song->samples[i], 1, inst->samplelength, fin);
                             if (ferror(fin)) FAIL(ERR_BADSONG);
                         } else {
