@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "syntrax.h"
-#include "ioutil.h"
+#include "jaytrax.h"
 #include "jxs.h"
+#include "ioutil.h"
 
 //extracts filename from a path. Length includes \0
 void exFnameFromPath(char* dest, char* src, int32_t max) {
@@ -21,7 +21,7 @@ void exFnameFromPath(char* dest, char* src, int32_t max) {
 //---------------------JXS3457
 
 int struct_readHeader(Header* dest, size_t len, FILE* fin) {
-    uint32_t i, j;
+    uint32_t i;
     J3457Header t;
     
     for (i=0; i < len; i++) {
@@ -35,7 +35,7 @@ int struct_readHeader(Header* dest, size_t len, FILE* fin) {
 }
 
 int struct_readSubsong(Subsong* dest, size_t len, FILE* fin) {
-    uint32_t i, j;
+    uint32_t i, j, k;
     J3457Subsong t;
     
     for (i=0; i < len; i++) {
@@ -57,9 +57,11 @@ int struct_readSubsong(Subsong* dest, size_t len, FILE* fin) {
             dest[i].delayamount[j] = t.delayamount[j];
         }
         dest[i].amplification   = t.amplification;
-        for (j=0; j < J3457_ORDERS_SUBSONG; j++) {
-            dest[i].orders[j].patnr  = t.orders[j].patnr;
-            dest[i].orders[j].patlen = t.orders[j].patnr;
+        for (j=0; j < J3457_CHANS_SUBSONG; j++) {
+            for (k=0; k < J3457_ORDERS_SUBSONG; k++) {
+                dest[i].orders[j][k].patnr  = t.orders[j][k].patnr;
+                dest[i].orders[j][k].patlen = t.orders[j][k].patlen;
+            }
         }
     }
     return ferror(fin);
@@ -88,7 +90,7 @@ int struct_readInst(Inst* dest, size_t len, FILE* fin) {
     J3457Inst t;
     for (i=0; i < len; i++) {
         fread(&t, sizeof(J3457Inst), 1, fin);
-        dest[i].mugiversion = t.mugiversion;
+        dest[i].mugiversion     = t.mugiversion;
         memcpy(&dest[i].instname, &t.instname, 32);
         dest[i].waveform        = t.waveform;
         dest[i].wavelength      = t.wavelength;
@@ -121,15 +123,17 @@ int struct_readInst(Inst* dest, size_t len, FILE* fin) {
             dest[i].fx[j].oscflg        = t.fx[j].oscflg;
             dest[i].fx[j].reseteffect   = t.fx[j].reseteffect;
         }
-        // We don't need whole 192 file path
-        exFnameFromPath(&dest[i].samplename, &t.samplename, SE_NAMELEN);
-        dest->sharing       = t.sharing;
-        dest->loopflg       = t.loopflg;
-        dest->bidirecflg    = t.bidirecflg;
-        dest->startpoint    = t.startpoint;
-        dest->looppoint     = t.looppoint;
-        dest->endpoint      = t.endpoint;
-        dest->samplelength  = t.samplelength;
+        memcpy(&dest[i].samplename, &t.samplename, 192);
+        //exFnameFromPath(&dest[i].samplename, &t.samplename, SE_NAMELEN);
+        dest[i].sharing       = t.sharing;
+        dest[i].loopflg       = t.loopflg;
+        dest[i].bidirecflg    = t.bidirecflg;
+        dest[i].startpoint    = t.startpoint;
+        dest[i].looppoint     = t.looppoint;
+        dest[i].endpoint      = t.endpoint;
+		dest[i].hasSampData   = t.hasSampData ? 1 : 0; //this was a sampdata pointer in original jaytrax
+        dest[i].samplelength  = t.samplelength;
+		//memcpy(&dest[i].waves, &t.waves, J3457_WAVES_INST * J3457_SAMPS_WAVE * sizeof(int16_t));
         fread(&dest->waves, 2, J3457_WAVES_INST * J3457_SAMPS_WAVE, fin);
     }
     return ferror(fin);
@@ -146,12 +150,12 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
     char buf[BUFSIZ];
     FILE *fin;
     Song* song;
-    int i, j;
+    int i;
     int error;
     
     if (!(fin = fopen(path, "rb"))) FAIL(ERR_FILEIO);
-    setbuf(fin, &buf);
-    
+    setbuf(fin, buf);
+	
     //song
     if((song = (Song*)calloc(1, sizeof(Song)))) {
         int version;
@@ -192,7 +196,7 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
                 
                 if (ferror(fin)) FAIL(ERR_BADSONG);
             } else FAIL(ERR_MALLOC);
-            
+			
             //instruments
             if ((song->instruments = (Inst**)calloc(nrInst, sizeof(Inst*)))) {
                 if (!(song->samples = (uint8_t**)calloc(nrInst, sizeof(uint8_t*)))) FAIL(ERR_MALLOC);
@@ -219,6 +223,7 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
                         
                         //sample data
                         if (inst->hasSampData) {
+							//inst->samplelength is in bytes, not samples
                             if(!(song->samples[i] = (uint8_t*)calloc(inst->samplelength, sizeof(uint8_t)))) FAIL(ERR_MALLOC);
                             fread(song->samples[i], 1, inst->samplelength, fin);
                             if (ferror(fin)) FAIL(ERR_BADSONG);
@@ -231,7 +236,6 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
             
             //arpeggio table
             fread(&song->arpTable, J3457_STEPS_ARP, J3457_ARPS_SONG, fin);
-            
         } else if (version == 3458) {
             //Soon enough!
             FAIL(ERR_BADSONG);

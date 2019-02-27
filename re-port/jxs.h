@@ -1,7 +1,7 @@
 #ifndef JXS_H
 #define JXS_H
 #include <stdint.h>
-#include "syntrax.h"
+#include "jaytrax.h"
 
 #define J3457_CHANS_SUBSONG (16)
 #define J3457_ORDERS_SUBSONG (256)
@@ -30,32 +30,32 @@ struct J3457Row {
 typedef struct J3457Header J3457Header;
 struct J3457Header {
     int16_t         mugiversion;//version of mugician this song was saved with
-    int16_t         dummy17;//!
+    int16_t         PAD00;
     int32_t         nrofpats;   //aantal patterns beschikbaar
     int32_t         nrofsongs;  //aantal beschikbare subsongs
     int32_t         nrofinst;   //aantal gebruikte instruments
-    int32_t         dummy0;
-    int16_t         dummy1;
-    int16_t         dummy2;
-    int16_t         dummy3;
-    int16_t         dummy4;
-    int16_t         dummy5;
-    int16_t         dummy6;
-    int16_t         dummy7;
-    int16_t         dummy8;
-    int16_t         dummy9;
-    int16_t         dummy10;
-    int16_t         dummy11;
-    int16_t         dummy12;
-    int16_t         dummy13;
-    int16_t         dummy14;
-    int16_t         dummy15;
-    int16_t         dummy16;
+    int32_t         PAD01;
+    int16_t         PAD02;
+    int16_t         PAD03;
+    int16_t         PAD04;
+    int16_t         PAD05;
+    int16_t         PAD06;
+    int16_t         PAD07;
+    int16_t         PAD08;
+    int16_t         PAD09;
+    int16_t         PAD0A;
+    int16_t         PAD0B;
+    int16_t         PAD0C;
+    int16_t         PAD0D;
+    int16_t         PAD0E;
+    int16_t         PAD0F;
+    int16_t         PAD10;
+	int16_t         PAD11;
 } __attribute__((__packed__));
 
 typedef struct J3457Subsong J3457Subsong;
 struct J3457Subsong {
-    int32_t         dummy17[J3457_CHANS_SUBSONG];
+    int32_t         PAD00[J3457_CHANS_SUBSONG];
     uint8_t         mute[J3457_CHANS_SUBSONG];   // which channels are muted? (1=muted)
     int32_t         songspd;    // delay tussen de pattern-stepjes
     int32_t         groove;     // groove value... 0=nothing, 1 = swing, 2=shuffle
@@ -71,22 +71,13 @@ struct J3457Subsong {
     uint16_t        delaytime; // the delaytime (for the echo effect)
     uint8_t         delayamount[J3457_CHANS_SUBSONG]; // amount per channel for the echo-effect
     int16_t         amplification; //extra amplification factor (20 to 1000)
-//  int16_t         dummy2;
-//  int16_t         dummy3;
-//  int16_t         dummy4;
-//  int16_t         dummy5;
-//  int16_t         dummy6;
-//  int16_t         dummy7;
-//  int16_t         dummy8;
-//  int16_t         dummy9;
-//  int16_t         dummy10;
-//  int16_t         dummy11;
-    int16_t         dummy12;
-    int16_t         dummy13;
-    int16_t         dummy14;
-    int16_t         dummy15;
-    int16_t         dummy16;
-    J3457Order      orders[J3457_ORDERS_SUBSONG];
+    int16_t         PAD01;
+    int16_t         PAD02;
+    int16_t         PAD03;
+    int16_t         PAD04;
+    int16_t         PAD05;
+    int16_t         PAD06;
+    J3457Order      orders[J3457_CHANS_SUBSONG][J3457_ORDERS_SUBSONG];
 } __attribute__((__packed__));
 
 typedef struct J3457Effect J3457Effect;
@@ -102,6 +93,7 @@ struct J3457Effect {
     int32_t         effecttype;
     int8_t          oscflg;
     int8_t          reseteffect;
+	int16_t         PAD00;
 } __attribute__((__packed__));
 
 // inst is the structure which has the entire instrument definition.
@@ -125,26 +117,27 @@ struct J3457Inst {
     int16_t         panwave;  
     int16_t         panspd;
     int16_t         panlooppoint;
-    int16_t         dummy4;     //for future stuff
-    int16_t         dummy5;
-    int16_t         dummy6;
-    int16_t         dummy7;
-    int16_t         dummy8;
+    int16_t         PAD00;
+    int16_t         PAD01;
+    int16_t         PAD02;
+    int16_t         PAD03;
+	int16_t         PAD04;
+	int16_t         PAD05;
     J3457Effect     fx[J3457_EFF_INST];
     char            samplename[192]; // path naar de gebruikte sample (was _MAX_PATH lang... is nu getruncate naar 192)(in de toekomst nog kleiner?)
-    int32_t         ldummy1;
-    int32_t         ldummy2;
-    int32_t         ldummy3;
-    int32_t         ldummy4;
-    int32_t         ldummy5;
-    int32_t         ldummy6;
-    int32_t         ldummy7;
-    int32_t         ldummy8;
-    int32_t         ldummy9;
-    int32_t         ldummy10;
-    int32_t         ldummy11;
-    int32_t         ldummy12;
-    int16_t         ldummy13;
+    int32_t         PAD06;
+    int32_t         PAD07;
+    int32_t         PAD08;
+    int32_t         PAD09;
+    int32_t         PAD0A;
+    int32_t         PAD0B;
+    int32_t         PAD0C;
+    int32_t         PAD0D;
+    int32_t         PAD0E;
+    int32_t         PAD0F;
+    int32_t         PAD10;
+    int32_t         PAD11;
+    int16_t         PAD12;
     int16_t         sharing;    // sample sharing! sharing contains instr nr of shared sanpledata (0=no sharing)
     int16_t         loopflg;    //does the sample loop or play one/shot? (0=1shot)
     int16_t         bidirecflg; // does the sample loop birdirectional? (0=no)
