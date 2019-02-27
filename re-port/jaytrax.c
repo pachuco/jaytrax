@@ -14,6 +14,7 @@ int16_t m_emptyWave[256];
 uint8_t isStaticInit = 0;
 
 Song* song;
+Subsong* subsong;
 Voice    m_ChannelData[SE_NROFCHANS];
 int32_t  m_CurrentSubsong;
 int16_t  m_TimeCnt;      // Samplecounter which stores the njumber of samples before the next songparams are calculated (is reinited with m_TimeSpd)
@@ -943,12 +944,11 @@ void playInstrument(JayPlayer* _this, int32_t channr, int32_t instNum, int32_t n
 }
 
 void handleSong(JayPlayer* _this) {
-	Subsong* subsong;
     int16_t i;
     
 	if (!m_PlayFlg) return; 
 	if (m_PauseFlg) return;
-    subsong = song->subsongs[m_CurrentSubsong];
+	
 	m_PatternDelay--;
 	if (m_PatternDelay==0) {
         if (!(m_PlayStep&1)) { // change the groove
@@ -1030,13 +1030,12 @@ void handleSong(JayPlayer* _this) {
 }
 
 void handleScript(JayPlayer* _this, int32_t f,int32_t s, int32_t d, int32_t p, int32_t channr) { //note, script,dstnote,param,channr
-    Voice* vc; Inst* ins; Subsong* subsong;
+    Voice* vc; Inst* ins;
 	int32_t a;
     
     vc = &m_ChannelData[channr];
 	if(vc->instrument==-1) return; //no change
     ins = song->instruments[vc->instrument];
-    subsong = song->subsongs[m_CurrentSubsong];
     
 	switch(s) {
         default:
@@ -1348,14 +1347,14 @@ void handleScript(JayPlayer* _this, int32_t f,int32_t s, int32_t d, int32_t p, i
 }
 
 void handlePattern(JayPlayer* _this, int32_t channr) {
-    Subsong* subsong; Voice* vc;
+    Voice* vc;
 	int32_t pat,off;
 	int32_t f,d,s,p;
     
 	if (m_PauseFlg) return;
 	if (!m_PlayFlg) return; 
 	if (m_PatternDelay != m_PlaySpeed) return;
-    subsong = song->subsongs[m_CurrentSubsong];
+	
     vc = &m_ChannelData[channr];
     
     if (subsong->mute[channr]==1) return;
@@ -1374,10 +1373,8 @@ void handlePattern(JayPlayer* _this, int32_t channr) {
 }
 
 void advanceSong(JayPlayer* _this) {
-	Subsong* subsong;
     int i;
     
-    subsong = song->subsongs[m_CurrentSubsong];
 	handleSong(_this);
 	for (i=0; i < subsong->nrofchans; i++) {
 		handlePattern(_this, i);
@@ -1404,11 +1401,12 @@ int jaytrax_loadSong(JayPlayer* _this, Song* sng) {
 
 // This function ensures that the play routine is called properly and everything is initialized in a good way
 void jaytrax_playSubSong(JayPlayer* _this, int subsongnr) {
-	int maat,pos,t;
-	Order* order; Subsong* subsong;
+	int maat, pos, t;
+	Order* order;
 
+	if (subsongnr > song->header.nrofsongs) return;
 	m_CurrentSubsong = subsongnr;
-    subsong = song->subsongs[m_CurrentSubsong];
+	subsong = song->subsongs[m_CurrentSubsong];
 	clearSoundBuffers(_this);
 
 	for(t=0;t < SE_NROFCHANS;t++) {
@@ -1463,9 +1461,6 @@ void jaytrax_playSubSong(JayPlayer* _this, int subsongnr) {
 }
 
 void jaytrax_stopSong(JayPlayer* _this) {
-    Subsong* subsong;
-    
-    subsong = song->subsongs[m_CurrentSubsong];
 	m_PlayFlg = 0;
 	m_PauseFlg = 0;
 	if(song) {
@@ -1524,6 +1519,7 @@ JayPlayer* jaytrax_init() {
 	m_MasterVolume = 0;
 
 	song = NULL;
+	subsong = NULL;
 
 	//initialize renderingcounters and speed
 	m_TimeCnt = 2200;
@@ -1536,8 +1532,6 @@ JayPlayer* jaytrax_init() {
 
 // Optimized stereo renderer... No high quality overlapmixbuf
 void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples, int32_t frequency) {
-    Subsong* subsong;
-	ChannelVar channelvars[SE_NROFCHANS];
 	int16_t i,p,c;
 	int32_t r;
 	int16_t nos;										//number of samples
@@ -1545,8 +1539,7 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 	int16_t amplification;							// amount to amplify afterwards
 	uint16_t echodelaytime;					//delaytime for echo (differs for MIDI or songplayback)
     int16_t m_NrOfChannels;
-
-    subsong = song->subsongs[m_CurrentSubsong];
+	
 	m_NrOfChannels = subsong->nrofchans;
 	// we calc nrofsamples samples in blocks of 'm_TimeCnt' big (de songspd)
 
@@ -1626,10 +1619,8 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 				}
 			} else {
 				for(p=0; p<nos; p++) {
-					lsample=0;
-					rsample=0;
-					echosamplel=0;
-					echosampler=0;
+					lsample = rsample = echosamplel = echosampler = 0;
+					
 					for(c=0; c < m_NrOfChannels; c++) {
 						Voice* vc = &m_ChannelData[c];
 						int32_t samp;
@@ -1642,27 +1633,27 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 								echosamplel += (samp * vc->gainEchoL)>>8;
 								echosampler += (samp * vc->gainEchoR)>>8;
 								
-								if (vc->curdirecflg == 0) { //richting end?
+								if (vc->curdirecflg == 0) { //going forwards
 									vc->samplepos += vc->freqOffset;
 									
 									if (vc->samplepos >= vc->endpoint) {
-										if (vc->loopflg == 0) { //one shot?
+										if (vc->loopflg == 0) { //one shot
 											vc->samplepos = -1;
 										} else { // looping
-											if(vc->bidirecflg == 0) { //1 richting??
+											if(vc->bidirecflg == 0) { //straight loop
 												vc->samplepos  -= (vc->endpoint - vc->looppoint);
-											} else {
+											} else { //bidi loop
 												vc->samplepos  -= vc->freqOffset;
-												vc->curdirecflg = 1; //richting omdraaien
+												vc->curdirecflg = 1;
 											}
 										}
 									}
-								} else { // weer bidirectioneel terug naar looppoint
+								} else { //going backwards
 									vc->samplepos -= vc->freqOffset;
 									
 									if (vc->samplepos <= vc->looppoint) {
 										vc->samplepos  += vc->freqOffset;
-										vc->curdirecflg = 0; //richting omdraaien
+										vc->curdirecflg = 0;
 									}
 								}
 							}
@@ -1677,18 +1668,17 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 						}
 					}
 					
-					
 					lsample = ((lsample / m_NrOfChannels) + m_LeftDelayBuffer[m_DelayCnt])  / 2;
 					lsample *= amplification;
 					lsample /= 100;
-					if(lsample>32760)  lsample = 32760;
-					if(lsample<-32760) lsample = -32760;
+					if(lsample > 32760)  lsample = 32760;
+					if(lsample < -32760) lsample = -32760;
 					
 					rsample = ((rsample / m_NrOfChannels) + m_RightDelayBuffer[m_DelayCnt]) / 2;
 					rsample *= amplification;
 					rsample /= 100;
-					if(rsample>32760)  rsample = 32760;
-					if(rsample<-32760) rsample = -32760;
+					if(rsample > 32760)  rsample = 32760;
+					if(rsample < -32760) rsample = -32760;
 					
 					//TODO: here, contents of m_OverlapBuffer are mixed with the samples
 					
