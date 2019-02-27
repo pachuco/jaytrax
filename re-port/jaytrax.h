@@ -143,33 +143,44 @@ struct VoiceEffect {
 // chandat is an internal structure which keeps track of the current instruemnts current variables per active channel
 typedef struct Voice Voice;
 struct Voice {
-	int			songpos;
-	int			patpos;
-	int			instrument;
-	int			volcnt;
-	int			pancnt;
-	int			arpcnt;
-	int			curnote;
-	int			curfreq;
-	int			curvol;
-	int			curpan;
-	int			bendadd;	// for the pitchbend
-	int			destfreq;	// ...
-	int			bendspd;	// ...
-	int			bendtonote;
-	int			freqcnt;
-	int			freqdel;
+	int32_t	    songpos;
+	int32_t	    patpos;
+	int32_t	    instrument;
+	int32_t	    volcnt;
+	int32_t	    pancnt;
+	int32_t	    arpcnt;
+	int32_t	    curnote;
+	int32_t	    curfreq;
+	int32_t	    curvol;
+	int32_t	    curpan;
+	int32_t	    bendadd;	// for the pitchbend
+	int32_t	    destfreq;	// ...
+	int32_t	    bendspd;	// ...
+	int32_t	    bendtonote;
+	int32_t	    freqcnt;
+	int32_t	    freqdel;
 	uint8_t*    sampledata;
-	int			looppoint;
-	int			endpoint;
-	short		loopflg;
-	short		bidirecflg;
-	short		curdirecflg;
-	int			synthPos;
-	int			samplepos;
-	int			lastplaypos;
+	int32_t		looppoint;
+	int32_t		endpoint;
+	int16_t		loopflg;
+	int16_t		bidirecflg;
+	int16_t		curdirecflg;
+	int32_t		synthPos;
+	int32_t		samplepos;
+	int32_t		lastplaypos;
+	
+	//immediate render vars
+	uint8_t		isSample;
+	int16_t*	wavePtr;
+	int16_t		waveLength;
+	int32_t		freqOffset;
+	int16_t		gainMainL;
+	int16_t		gainMainR;
+	int16_t		gainEchoL;
+	int16_t		gainEchoR;
+	
 	VoiceEffect fx[SE_WAVES_INST];
-	short		waves[SE_WAVES_INST * SE_SAMPS_WAVE + 1];
+	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE + 1];
 };
 
 //TODO: make code re-entrant

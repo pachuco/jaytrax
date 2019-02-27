@@ -69,6 +69,16 @@ void clearSoundBuffers(JayPlayer* _this) {
 		vc->loopflg = 0;
 		vc->bidirecflg = 0;
 		vc->curdirecflg = 0;
+		
+		vc->isSample 	= 0;
+		vc->wavePtr		= 0;
+		vc->waveLength	= 0;
+		vc->freqOffset	= 0;
+		vc->gainMainL	= 0;
+		vc->gainMainR	= 0;
+		vc->gainEchoL	= 0;
+		vc->gainEchoR	= 0;
+		
 		for(j=0;j<4;j++) {
             VoiceEffect* vfx = &vc->fx[j];
             
@@ -998,7 +1008,7 @@ void handleSong(JayPlayer* _this) {
                         isSkipLoop = 1;
                         break;
                     }
-
+					
                     endpos -= lastmaat;
                     endpos &= 63;
                     
@@ -1524,34 +1534,10 @@ JayPlayer* jaytrax_init() {
     return NULL;
 }
 
-//internal rendering structure to speed up innerloop
-typedef struct ChannelVar ChannelVar;
-struct ChannelVar {
-	int8_t   issample;
-	int16_t* wavepnt;
-	uint16_t localwavepos;
-	int16_t  panl;
-	int16_t  panr;
-	int16_t  echovolumel;
-	int16_t  echovolumer;
-	int16_t  freqoffset;
-	int16_t  wavelength;
-	int32_t  synthPos; //WARN: long
-	int32_t  samplepos; //WARN: long
-	int16_t  curdirecflg;
-	int32_t  waveend;
-	int16_t  loopflg;
-	int16_t  bidirecflg;
-	int32_t  waveloop;
-	int16_t  volume;
-	int16_t  echovolume;
-};
-
 // Optimized stereo renderer... No high quality overlapmixbuf
 void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples, int32_t frequency) {
-    Subsong* subsong; Voice* vc;
+    Subsong* subsong;
 	ChannelVar channelvars[SE_NROFCHANS];
-	ChannelVar* curvars;
 	int16_t i,p,c;
 	int32_t r;
 	int16_t nos;										//number of samples
@@ -1578,164 +1564,142 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 
 		// preparation of wave pointers and freq offset
 		for(i=0; i<m_NrOfChannels; i++) {
-			int wavenr, instnr;
+			Voice* vc;
+			int32_t instnr;
+			int16_t volMain, volEcho;
             
             vc = &m_ChannelData[i];
 			instnr = vc->instrument;
 			if (instnr == -1) { // mute?
-				channelvars[i].wavepnt=&m_emptyWave[0];
-				channelvars[i].issample=0;
+				vc->wavePtr  = &m_emptyWave[0];
+				vc->isSample = 0;
 			} else {
 				if(vc->sampledata) {
-					channelvars[i].samplepos   = vc->samplepos;
-					channelvars[i].wavepnt     = (short *)vc->sampledata;
-					channelvars[i].waveloop    = vc->looppoint; 
-					channelvars[i].waveend     = vc->endpoint; 
-					channelvars[i].loopflg     = vc->loopflg;
-					channelvars[i].bidirecflg  = vc->bidirecflg;
-					channelvars[i].curdirecflg = vc->curdirecflg;
-					channelvars[i].issample=1;
+					vc->wavePtr  = (short *)vc->sampledata;
+					vc->isSample = 1;
 				} else {
                     Inst* inst = song->instruments[instnr];
-					wavenr = inst->waveform;
-					channelvars[i].wavepnt=&vc->waves[256*wavenr];
-					channelvars[i].wavelength=((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
-					channelvars[i].issample=0;
+					vc->wavePtr    = &vc->waves[256*inst->waveform];
+					vc->waveLength = ((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
+					vc->isSample   = 0;
 				}
 			}
-
-			channelvars[i].localwavepos = vc->synthPos;
-
-            //calcen frequency
-			if(vc->curfreq<10)vc->curfreq=10;
-			channelvars[i].freqoffset = (256*vc->curfreq)/frequency;
-			channelvars[i].volume = (vc->curvol+10000)/39;
-			if(channelvars[i].volume>256) channelvars[i].volume=256;
-
-			if(vc->curpan==0) { //panning?
-				channelvars[i].panl=256; //geen panning
-				channelvars[i].panr=256;
+			
+            //calculate frequency
+			if(vc->curfreq<10) vc->curfreq = 10;
+			vc->freqOffset = (256*vc->curfreq)/frequency;
+			
+			//gains
+			volMain = (vc->curvol+10000)/39;
+			if (volMain > 256) volMain = 256;
+			volEcho = subsong->delayamount[i];
+			
+			if (vc->curpan==0) { //panning?
+				vc->gainMainL=256; //center
+				vc->gainMainR=256;
 			} else {
 				if(vc->curpan>0) {
-					channelvars[i].panl = 256-(vc->curpan);
-					channelvars[i].panr = 256;
+					vc->gainMainL = 256-(vc->curpan);
+					vc->gainMainR = 256;
 				} else {
-					channelvars[i].panr = 256+(vc->curpan);
-					channelvars[i].panl=256;
+					vc->gainMainL = 256;
+					vc->gainMainR = 256+(vc->curpan);
 				}
 			}
-
-			channelvars[i].echovolume = subsong->delayamount[i];
-
-			//stereo optimimalisation 1... precalc panning multiplied with mainvolume
-			channelvars[i].panl = (channelvars[i].panl * channelvars[i].volume)>>8;
-			channelvars[i].panr = (channelvars[i].panr * channelvars[i].volume)>>8;
-
-			//stereo optimimalisation 1... precalc panning multiplied with echo
-			channelvars[i].echovolumel = (channelvars[i].echovolume * channelvars[i].panl)>>8;
-			channelvars[i].echovolumer = (channelvars[i].echovolume * channelvars[i].panr)>>8;
+			
+			//premultiply volumes
+			vc->gainMainL = (vc->gainMainL * volMain)>>8;
+			vc->gainMainR = (vc->gainMainR * volMain)>>8;
+			vc->gainEchoL = (vc->gainMainL * volEcho)>>8;
+			vc->gainEchoR = (vc->gainMainR * volEcho)>>8;
 		}
 		amplification = subsong->amplification;
 		echodelaytime = subsong->delaytime;
 
-		if(outbuf) { // dry rendering? or actual rendering?
-			if(m_NrOfChannels==0) {
-				for(i=0;i<nrofsamples;i++) { //c lean renderbuffer
+		if (!outbuf) {
+			r += (nos*2);   //stereo
+		} else {
+			if(m_NrOfChannels == 0) {
+				for(i=0; i<nrofsamples; i++) { //c lean renderbuffer
 					outbuf[r++] = 0;
 					outbuf[r++] = 0;
 				}
 			} else {
-				for(p=0;p<nos;p++) {
+				for(p=0; p<nos; p++) {
 					lsample=0;
 					rsample=0;
 					echosamplel=0;
 					echosampler=0;
-					for(c=0;c<m_NrOfChannels;c++) {
-						curvars = &channelvars[c];
-						int b;
-						if (!curvars->issample) {
-							b=curvars->wavepnt[curvars->localwavepos>>8];
-							lsample += (b*curvars->panl)>>8;
-							rsample += (b*curvars->panr)>>8;
-							echosamplel += (b*curvars->echovolumel)>>8;
-							echosampler += (b*curvars->echovolumer)>>8;
-							curvars->localwavepos+=curvars->freqoffset;
-							curvars->localwavepos&=curvars->wavelength;
-						} else {
-							if(curvars->samplepos!=0xffffffff) {
-								b=curvars->wavepnt[curvars->samplepos>>8];
-								lsample += (b*curvars->panl)>>8;
-								rsample += (b*curvars->panr)>>8;
-								echosamplel += (b*curvars->echovolumel)>>8;
-								echosampler += (b*curvars->echovolumer)>>8;
+					for(c=0; c < m_NrOfChannels; c++) {
+						Voice* vc = &m_ChannelData[c];
+						int32_t samp;
+						
+						if (vc->isSample) {
+							if (vc->samplepos != -1) {
+								samp         = vc->wavePtr[vc->samplepos>>8];
+								lsample     += (samp * vc->gainMainL)>>8;
+								rsample     += (samp * vc->gainMainR)>>8;
+								echosamplel += (samp * vc->gainEchoL)>>8;
+								echosampler += (samp * vc->gainEchoR)>>8;
 								
-								if(curvars->curdirecflg==0) { //richting end?
-									curvars->samplepos+=(int)curvars->freqoffset;
+								if (vc->curdirecflg == 0) { //richting end?
+									vc->samplepos += vc->freqOffset;
 									
-									if(curvars->samplepos>=curvars->waveend) {
-										if(curvars->loopflg==0) { //one shot?
-											curvars->samplepos=0xffffffff;
+									if (vc->samplepos >= vc->endpoint) {
+										if (vc->loopflg == 0) { //one shot?
+											vc->samplepos = -1;
 										} else { // looping
-											if(curvars->bidirecflg==0) { //1 richting??
-												curvars->samplepos-=(curvars->waveend-curvars->waveloop);
+											if(vc->bidirecflg == 0) { //1 richting??
+												vc->samplepos  -= (vc->endpoint - vc->looppoint);
 											} else {
-												curvars->samplepos-=(int)curvars->freqoffset;
-												curvars->curdirecflg=1; //richting omdraaien
+												vc->samplepos  -= vc->freqOffset;
+												vc->curdirecflg = 1; //richting omdraaien
 											}
 										}
 									}
 								} else { // weer bidirectioneel terug naar looppoint
-									curvars->samplepos-=(int)curvars->freqoffset;
+									vc->samplepos -= vc->freqOffset;
 									
-									if(curvars->samplepos<=curvars->waveloop) {
-										curvars->samplepos+=(int)curvars->freqoffset;
-										curvars->curdirecflg=0; //richting omdraaien
+									if (vc->samplepos <= vc->looppoint) {
+										vc->samplepos  += vc->freqOffset;
+										vc->curdirecflg = 0; //richting omdraaien
 									}
 								}
 							}
+						} else {
+							samp = vc->wavePtr[vc->synthPos>>8];
+							lsample      += (samp * vc->gainMainL)>>8;
+							rsample      += (samp * vc->gainMainR)>>8;
+							echosamplel  += (samp * vc->gainEchoL)>>8;
+							echosampler  += (samp * vc->gainEchoR)>>8;
+							vc->synthPos += vc->freqOffset;
+							vc->synthPos &= vc->waveLength;
 						}
 					}
 					
-					lsample = ((lsample/m_NrOfChannels)+m_LeftDelayBuffer[m_DelayCnt])/2;
-					rsample = ((rsample/m_NrOfChannels)+m_RightDelayBuffer[m_DelayCnt])/2;
 					
-					// if we are still in the bottom SE_OVERLAP part then we have to mix the previous wave through (to avoid clicks)
-					
+					lsample = ((lsample / m_NrOfChannels) + m_LeftDelayBuffer[m_DelayCnt])  / 2;
 					lsample *= amplification;
 					lsample /= 100;
-					short smpl;
-					if(lsample>32760) lsample=32760;
-					if(lsample<-32760) lsample=-32760;
+					if(lsample>32760)  lsample = 32760;
+					if(lsample<-32760) lsample = -32760;
 					
+					rsample = ((rsample / m_NrOfChannels) + m_RightDelayBuffer[m_DelayCnt]) / 2;
 					rsample *= amplification;
 					rsample /= 100;
-					if(rsample>32760) rsample=32760;
-					if(rsample<-32760) rsample=-32760;
+					if(rsample>32760)  rsample = 32760;
+					if(rsample<-32760) rsample = -32760;
 					
-					smpl=lsample;
-					outbuf[r++]=smpl;
+					//TODO: here, contents of m_OverlapBuffer are mixed with the samples
 					
-					smpl=rsample;
-					outbuf[r++]=smpl;  //stereo
+					outbuf[r++] = (int16_t)lsample;
+					outbuf[r++] = (int16_t)rsample;
 					
-					
-					m_LeftDelayBuffer[m_DelayCnt]=((echosamplel/m_NrOfChannels)+m_LeftDelayBuffer[m_DelayCnt])/2;
-					m_RightDelayBuffer[m_DelayCnt]=((echosampler/m_NrOfChannels)+m_RightDelayBuffer[m_DelayCnt])/2;
+					m_LeftDelayBuffer[m_DelayCnt]  = ((echosamplel / m_NrOfChannels) + m_LeftDelayBuffer[m_DelayCnt])  / 2;
+					m_RightDelayBuffer[m_DelayCnt] = ((echosampler / m_NrOfChannels) + m_RightDelayBuffer[m_DelayCnt]) / 2;
 					m_DelayCnt++;
-					m_DelayCnt%=echodelaytime/(44100/frequency);
-					
+					m_DelayCnt %= echodelaytime / (44100 / frequency);
 				}
-			}
-		} else { // was this a dry render?  then we should increment r anyway.
-			r += (nos*2);   // times 2 since we must think stereo
-		}
-
-		for(i=0; i<m_NrOfChannels; i++) {
-            Voice* vc = &m_ChannelData[i];
-            vc->synthPos = channelvars[i].localwavepos;
-			if(channelvars[i].issample) {
-				vc->samplepos   = channelvars[i].samplepos;
-				vc->curdirecflg = channelvars[i].curdirecflg;
 			}
 		}
 
@@ -1747,11 +1711,13 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 			tempdelaycnt=m_DelayCnt;
 			for(c=0;c<SE_NROFCHANS;c++)
 			{
-				tempwavepos[c] = channelvars[c].localwavepos;
+				tempwavepos[c] = m_ChannelData[c].synthPos;
 			}
-
+			
+			//TODO: here, we prepare m_OverlapBuffer(repeat of above mixing loop)
+			
 			m_DelayCnt=tempdelaycnt;
-
+			
 			for(c=0;c<SE_NROFCHANS;c++) {
                 m_ChannelData[c].synthPos = tempwavepos[c];
 			}
