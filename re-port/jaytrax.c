@@ -1028,10 +1028,10 @@ void handleSong(JayPlayer* _this) {
                         endpos &= 63;
                         
                         vc->songpos = pos;
-                        vc->patpos = endpos;
+                        vc->patpos  = endpos;
                     }
 					
-                    if (isSkipLoop) {
+                    if (!isSkipLoop) {
                         m_PlayPosition = subsong->looppos;
                         m_PlayStep     = subsong->loopstep;
                     }
@@ -1437,8 +1437,10 @@ void jaytrax_playSubSong(JayPlayer* _this, int subsongnr) {
 	clearSoundBuffers(_this);
 
 	for(t=0; t < SE_NROFCHANS; t++) {
-		int endpos;
-		int lastmaat;
+		Voice* vc;
+        int endpos, lastmaat;
+        
+        vc = &m_ChannelData[t];
         
 		maat = pos = lastmaat = 0;
 		order = subsong->orders[t];
@@ -1459,8 +1461,8 @@ void jaytrax_playSubSong(JayPlayer* _this, int subsongnr) {
         //endpos-=maat;
 		endpos &=63;
 		
-		m_ChannelData[t].songpos = pos;
-		m_ChannelData[t].patpos  = endpos;
+		vc->songpos = pos;
+		vc->patpos  = endpos;
 	}
 
 	m_PatternDelay = 1;
@@ -1596,7 +1598,7 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
                 for(i=0; i < m_NrOfChannels; i++) {
                     Voice* vc;
                     int16_t instnr;
-                    int32_t volMain, volEcho;
+                    int16_t volMain, volEcho;
                     
                     vc = &m_ChannelData[i];
                     instnr = vc->instrument;
