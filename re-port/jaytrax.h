@@ -183,18 +183,47 @@ struct Voice {
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
-//TODO: make code re-entrant
-typedef struct JayPlayer JayPlayer;
-struct JayPlayer {
+#define SE_OVERLAP (100)			// overlap duration in samples, for declick
+enum SE_PLAYMODE {
+	SE_PM_SONG = 0,
+	SE_PM_PATTERN
 };
 
 //---------------------API
 
-int   jaytrax_loadSong(JayPlayer* _this, Song* sng);
-void  jaytrax_playSubSong(JayPlayer* _this, int subsongnr);
-void  jaytrax_stopSong(JayPlayer* _this);
-void  jaytrax_pauseSong(JayPlayer* _this);
-void  jaytrax_continueSong(JayPlayer* _this);
+//this holds replayer state
+typedef struct JayPlayer JayPlayer;
+struct JayPlayer {
+    Song*       m_song;
+    Subsong*    m_subsong;
+    Voice       m_ChannelData[SE_NROFCHANS];
+    int32_t     m_CurrentSubsong;
+    int16_t     m_TimeCnt;      // Samplecounter which stores the njumber of samples before the next songparams are calculated (is reinited with m_TimeSpd)
+    int16_t     m_TimeSpd;      // Sample accurate counter which indicates every how many samples the song should progress 1 tick. Is dependant on rendering frequency and BPM
+    uint8_t     m_PlayFlg;      // 0 if playback is stopped, 1 if song is being played
+    uint8_t     m_PauseFlg;     // 0 if playback is not paused, 1 if playback is paused
+    int32_t     m_PlaySpeed;    // Actual delay in between notes
+    int32_t     m_PatternDelay; // Current delay in between notes (resets with m_PlaySpeed)
+    int32_t     m_PlayPosition;	// Current position in song (coarse)
+    int32_t     m_PlayStep;		// Current position in song (fine)
+    int32_t     m_MasterVolume; // Mastervolume of the replayer (256=max - 0=min)
+    int16_t     m_LeftDelayBuffer[65536];   // buffer to simulate an echo on the left stereo channel
+    int16_t     m_RightDelayBuffer[65536];  // buffer to simulate an echo on the right stereo channel
+    int16_t     m_OverlapBuffer[SE_OVERLAP*2];	// Buffer which stores overlap between waveforms to avoid clicks
+    int16_t     m_OverlapCnt;   // Used to store how much overlap we have already rendered
+    uint16_t    m_DelayCnt;		// Internal counter used for delay
+
+    int32_t	    m_PlayMode;		    // in which mode is the replayer? Song or patternmode?
+    int32_t		m_CurrentPattern;	// Which pattern are we currently playing (In pattern play mode)
+    int32_t		m_PatternLength;    // Current length of a pattern (in pattern play mode)
+    int32_t		m_PatternOffset;    // Current play offset in the pattern (used for display)
+};
+
+int   jaytrax_loadSong(JayPlayer* _T, Song* sng);
+void  jaytrax_playSubSong(JayPlayer* _T, int subsongnr);
+void  jaytrax_stopSong(JayPlayer* _T);
+void  jaytrax_pauseSong(JayPlayer* _T);
+void  jaytrax_continueSong(JayPlayer* _T);
 JayPlayer* jaytrax_init();
-void  jaytrax_renderChunk(JayPlayer* _this, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
+void  jaytrax_renderChunk(JayPlayer* _T, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
 #endif
