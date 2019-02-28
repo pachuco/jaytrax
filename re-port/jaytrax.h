@@ -162,9 +162,9 @@ struct Voice {
 	uint8_t*    sampledata;
 	int32_t		looppoint;
 	int32_t		endpoint;
-	int16_t		loopflg;
-	int16_t		bidirecflg;
-	int16_t		curdirecflg;
+	uint8_t		loopflg;
+	uint8_t		bidirecflg;
+	uint8_t		curdirecflg;
 	int32_t		synthPos;
 	int32_t		samplepos;
 	int32_t		lastplaypos;
@@ -172,7 +172,7 @@ struct Voice {
 	//immediate render vars
 	uint8_t		isSample;
 	int16_t*	wavePtr;
-	int16_t		waveLength;
+	int32_t		waveLength;
 	int32_t		freqOffset;
 	int16_t		gainMainL;
 	int16_t		gainMainR;
@@ -180,7 +180,7 @@ struct Voice {
 	int16_t		gainEchoR;
 	
 	VoiceEffect fx[SE_WAVES_INST];
-	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE + 1];
+	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
 //TODO: make code re-entrant

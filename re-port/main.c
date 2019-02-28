@@ -29,6 +29,7 @@ DWORD WINAPI mixThread(LPVOID lpParam) {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
     while(isAudioRunning) {
         while (header[currBuf].dwFlags & WHDR_DONE) {
+			//move this into main thread somehow
             jaytrax_renderChunk(jay, mixBuffer[currBuf], MIX_BUF_SAMPLES, SAMPRATE);
             
             waveOutPrepareHeader(hWaveOut, &header[currBuf], sizeof(WAVEHDR));
@@ -88,7 +89,7 @@ BOOL openMixer(uint32_t outputFreq) {
 
     for (i = 0; i < MIX_BUF_NUM; i++) {
         mixBuffer[i] = (int16_t *)(calloc(MIX_BUF_SAMPLES, wfx.nBlockAlign));
-        if (mixBuffer[i] == NULL) goto omError;
+        if (mixBuffer[i] == NULL) goto onError;
         
         memset(&header[i], 0, sizeof(WAVEHDR));
         header[i].dwBufferLength = wfx.nBlockAlign * MIX_BUF_SAMPLES;
@@ -102,15 +103,14 @@ BOOL openMixer(uint32_t outputFreq) {
     
     return TRUE;
     
-    omError:
+    onError:
         closeMixer();
         return FALSE;
 }
 
 int main(int argc, char* argv[]) {
     #define FAIL(x) {printf("%s\n", (x)); return 1;}
-    Song* song;
-    int resJxs, resMixer;
+    Song* song = NULL;
     
     if (argc != 2) {
         printf("Usage: jaytrax.exe <module>\n");
@@ -119,10 +119,9 @@ int main(int argc, char* argv[]) {
     
     jay = jaytrax_init();
     
-    if ((resJxs = jxsfile_loadSong(argv[1], &song))==0) {
+    if (jxsfile_loadSong(argv[1], &song)==0) {
 		if (jaytrax_loadSong(jay, song)) {
-			jaytrax_playSubSong(jay, 0);
-			if ((resMixer = openMixer(SAMPRATE))) {
+			if (openMixer(SAMPRATE)) {
 				printf("Press any key to stop.\n");
 				for (;;) {
 					if (kbhit()) break;
@@ -133,7 +132,7 @@ int main(int argc, char* argv[]) {
 			} else FAIL("Cannot open mixer.");
 		} else FAIL("Invalid song.")
     } else FAIL("Cannot load file.");
-
+    
     return 0;
     #undef FAIL
 }

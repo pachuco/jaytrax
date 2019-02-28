@@ -7,30 +7,38 @@
 
 #define M_PI (3.14159265359)
 #define SE_OVERLAP (100)			// overlap duration in samples, for declick
+enum SE_PLAYMODE {
+	SE_PM_SONG = 0,
+	SE_PM_PATTERN
+};
 
 int32_t m_frequencyTable[SE_NROFFINETUNESTEPS][128];
 int16_t m_sineTab[256];
-int16_t m_emptyWave[256];
 uint8_t isStaticInit = 0;
 
-Song* song;
-Subsong* subsong;
-Voice    m_ChannelData[SE_NROFCHANS];
-int32_t  m_CurrentSubsong;
-int16_t  m_TimeCnt;      // Samplecounter which stores the njumber of samples before the next songparams are calculated (is reinited with m_TimeSpd)
-int16_t  m_TimeSpd;      // Sample accurate counter which indicates every how many samples the song should progress 1 tick. Is dependant on rendering frequency and BPM
-uint8_t  m_PlayFlg;      // 0 if playback is stopped, 1 if song is being played
-uint8_t  m_PauseFlg;     // 0 if playback is not paused, 1 if playback is paused
-int32_t  m_PlaySpeed;    // Actual delay in between notes
-int32_t  m_PatternDelay; // Current delay in between notes (resets with m_PlaySpeed)
-int32_t  m_PlayPosition;	// Current position in song (coarse)
-int32_t  m_PlayStep;		// Current position in song (fine)
-int32_t  m_MasterVolume; // Mastervolume of the replayer (256=max - 0=min)
-int16_t  m_LeftDelayBuffer[65536];   // buffer to simulate an echo on the left stereo channel
-int16_t  m_RightDelayBuffer[65536];  // buffer to simulate an echo on the right stereo channel
-int16_t  m_OverlapBuffer[SE_OVERLAP*2];	// Buffer which stores overlap between waveforms to avoid clicks
-int16_t  m_OverlapCnt;   // Used to store how much overlap we have already rendered
-uint16_t m_DelayCnt;				// Internal counter used for delay
+Song*       song;
+Subsong*    subsong;
+Voice       m_ChannelData[SE_NROFCHANS];
+int32_t     m_CurrentSubsong;
+int16_t     m_TimeCnt;      // Samplecounter which stores the njumber of samples before the next songparams are calculated (is reinited with m_TimeSpd)
+int16_t     m_TimeSpd;      // Sample accurate counter which indicates every how many samples the song should progress 1 tick. Is dependant on rendering frequency and BPM
+uint8_t     m_PlayFlg;      // 0 if playback is stopped, 1 if song is being played
+uint8_t     m_PauseFlg;     // 0 if playback is not paused, 1 if playback is paused
+int32_t     m_PlaySpeed;    // Actual delay in between notes
+int32_t     m_PatternDelay; // Current delay in between notes (resets with m_PlaySpeed)
+int32_t     m_PlayPosition;	// Current position in song (coarse)
+int32_t     m_PlayStep;		// Current position in song (fine)
+int32_t     m_MasterVolume; // Mastervolume of the replayer (256=max - 0=min)
+int16_t     m_LeftDelayBuffer[65536];   // buffer to simulate an echo on the left stereo channel
+int16_t     m_RightDelayBuffer[65536];  // buffer to simulate an echo on the right stereo channel
+int16_t     m_OverlapBuffer[SE_OVERLAP*2];	// Buffer which stores overlap between waveforms to avoid clicks
+int16_t     m_OverlapCnt;   // Used to store how much overlap we have already rendered
+uint16_t    m_DelayCnt;		// Internal counter used for delay
+
+int32_t	    m_PlayMode;		    // in which mode is the replayer? Song or patternmode?
+int32_t		m_CurrentPattern;	// Which pattern are we currently playing (In pattern play mode)
+int32_t		m_PatternLength;    // Current length of a pattern (in pattern play mode)
+int32_t		m_PatternOffset;    // Current play offset in the pattern (used for display)
 
 //void SoundEngine::DeAllocate()
 
@@ -58,7 +66,7 @@ void clearSoundBuffers(JayPlayer* _this) {
 		vc->bendspd = 0;
 		vc->freqcnt = 0;
 		vc->freqdel = 0;
-		vc->sampledata = 0;
+		vc->sampledata = NULL;
 		vc->endpoint = 0;
         vc->synthPos = 0;
 		vc->samplepos = 0;
@@ -72,7 +80,7 @@ void clearSoundBuffers(JayPlayer* _this) {
 		vc->curdirecflg = 0;
 		
 		vc->isSample 	= 0;
-		vc->wavePtr		= 0;
+		vc->wavePtr		= NULL;
 		vc->waveLength	= 0;
 		vc->freqOffset	= 0;
 		vc->gainMainL	= 0;
@@ -413,7 +421,7 @@ void handleEffects(JayPlayer* _this, int32_t channr) {
                     int16_t *dw;
                     int16_t i,c;
                     c = (int16_t)vfx->fxcnt1;
-                    if(c!=0) { // timeout ended?
+                    if(c != 0) { // timeout ended?
                         vfx->fxcnt1--;
                         break;
                     }
@@ -424,7 +432,7 @@ void handleEffects(JayPlayer* _this, int32_t channr) {
                     for (i=0; i<128; i++) {
                         dw[i]=dw[i*2];
                     }
-                    memcpy(&dw[128],&dw[0],256);
+                    memcpy(&dw[128], &dw[0], 256);
                 }
                 break;
             case 12: { // Clipper
@@ -783,7 +791,7 @@ void handleInstrument(JayPlayer* _this, int32_t channr) {
     ins = song->instruments[vc->instrument];
     
     //vol
-	if (!ins->amwave) { //volume wave?
+	if (ins->amwave == 0) { //volume wave?
 		vol = 0;
 	} else {
 		vc->volcnt += ins->amspd;
@@ -919,7 +927,7 @@ void playInstrument(JayPlayer* _this, int32_t channr, int32_t instNum, int32_t n
 		vc->lastplaypos = -1; // first time
 		vc->freqdel = ins->fmdelay;
 		for (i=0; i<SE_WAVES_INST; i++) {
-			if (ins->resetwave[i]) memcpy(&vc->waves[i*256], &ins->waves[i*256],512);
+			if (ins->resetwave[i]) memcpy(&vc->waves[i*256], &ins->waves[i*256], 256 * sizeof(int16_t));
 		}
 		vc->instrument = instNum-1;
 	}
@@ -945,85 +953,95 @@ void playInstrument(JayPlayer* _this, int32_t channr, int32_t instNum, int32_t n
 
 void handleSong(JayPlayer* _this) {
     int16_t i;
+    int32_t step;
     
 	if (!m_PlayFlg) return; 
 	if (m_PauseFlg) return;
 	
 	m_PatternDelay--;
 	if (m_PatternDelay==0) {
-        if (!(m_PlayStep&1)) { // change the groove
-            m_PlaySpeed = 8-subsong->groove;
+        step = m_PlayMode == SE_PM_SONG ? m_PlayStep : m_PatternOffset;
+        
+        if ((step&1) == 0) { // change the groove
+            m_PlaySpeed = 8 - subsong->groove;
         } else {
-            m_PlaySpeed = 8+subsong->groove;
+            m_PlaySpeed = 8 + subsong->groove;
         }
 		m_PatternDelay = m_PlaySpeed;
         
-        for (i=0; i<subsong->nrofchans; i++) {
-            Voice* vc = &m_ChannelData[i];
-            
-            vc->patpos++;
-            //the ==-1 part is that the song counter always is 1 before the start...so if the song starts at the beginning, the pos is -1
-            if (vc->patpos == subsong->orders[i][vc->songpos].patlen || vc->songpos == -1) {
-                vc->patpos = 0;
-                vc->songpos++;
-            }
-        }
-
-        m_PlayStep++;
-        if (m_PlayStep==64) {
-            m_PlayStep=0;
-            m_PlayPosition++;
-        }
-
-        //has endpos been reached?
-        if (m_PlayPosition == subsong->endpos && m_PlayStep == subsong->endstep) {
-            if (subsong->songloop) {  //does song loop?
-                int32_t maat, pos, t;
-                uint8_t isSkipLoop = 0;
+        if (m_PlayMode == SE_PM_PATTERN) {
+			m_PatternOffset++;
+			m_PatternOffset %= m_PatternLength;
+        } else {
+            for (i=0; i<subsong->nrofchans; i++) {
+                Voice* vc = &m_ChannelData[i];
                 
-                // now me must reset all the playpointers to the loop positions
-                for (t=0; t<SE_NROFCHANS; t++) {
-                    Order* orders = subsong->orders[t];
-                    Voice* vc = &m_ChannelData[t];
-                    int32_t endpos;
-                    int32_t lastmaat;
+                vc->patpos++;
+                //the ==-1 part is that the song counter always is 1 before the start...so if the song starts at the beginning, the pos is -1
+                if (vc->patpos == subsong->orders[i][vc->songpos].patlen || vc->songpos == -1) {
+                    vc->patpos = 0;
+                    vc->songpos++;
+                }
+            }
+			
+            m_PlayStep++;
+            if (m_PlayStep==64) {
+                m_PlayStep=0;
+                m_PlayPosition++;
+            }
+			
+            //has endpos been reached?
+            if (m_PlayPosition == subsong->endpos && m_PlayStep == subsong->endstep) {
+                if (subsong->songloop) {  //does song loop?
+                    int32_t maat, pos, t;
+                    uint8_t isSkipLoop = 0;
                     
-                    maat = 0;
-                    pos = 0;
-                    lastmaat=0;
-                    
-                    endpos = (subsong->looppos*64)+subsong->loopstep;
-                    while (pos<256) {
-                        if (maat > endpos) {
-                            if (pos != endpos) pos--;
+                    // now me must reset all the playpointers to the loop positions
+                    for (t=0; t<SE_NROFCHANS; t++) {
+                        Order* orders = subsong->orders[t];
+                        Voice* vc = &m_ChannelData[t];
+                        int32_t endpos;
+                        int32_t lastmaat;
+                        
+                        maat = 0;
+                        pos = 0;
+                        lastmaat=0;
+                        
+                        endpos = (subsong->looppos*64)+subsong->loopstep;
+                        while (pos<256) {
+                            if (maat > endpos) {
+                                if (pos != endpos) pos--;
+                                break;
+                            }
+                            lastmaat=maat;
+                            maat+=orders[pos].patlen;
+                            pos++;
+                        }
+                        //oops! starting position too far!
+                        if (pos == 256) { //WARN: >= 256?
+                            m_PlayFlg = 0;
+                            isSkipLoop = 1;
                             break;
                         }
-                        lastmaat=maat;
-                        maat+=orders[pos].patlen;
-                        pos++;
-                    }
-                    //oops! starting position too far!
-                    if (pos == 256) { //WARN: >= 256?
-                        m_PlayFlg = 0;
-                        isSkipLoop = 1;
-                        break;
+                        
+                        endpos -= lastmaat;
+                        endpos &= 63;
+                        
+                        vc->songpos = pos;
+                        vc->patpos = endpos;
                     }
 					
-                    endpos -= lastmaat;
-                    endpos &= 63;
-                    
-                    vc->songpos = pos;
-                    vc->patpos = endpos;
+                    if (isSkipLoop) {
+                        m_PlayPosition = subsong->looppos;
+                        m_PlayStep     = subsong->loopstep;
+                    }
+                } else { // stop song
+                    m_PlayFlg  = 0;
+                    m_PauseFlg = 0;
+                    m_PlayMode = SE_PM_SONG;
+                    m_PlayPosition = subsong->songpos;
+                    m_PlayStep     = subsong->songstep;
                 }
-                if (isSkipLoop) {
-                    m_PlayPosition = subsong->looppos;
-                    m_PlayStep     = subsong->loopstep;
-                }
-            } else { // stop song
-                m_PlayFlg  = 0;
-                m_PauseFlg = 0;
-                m_PlayPosition = subsong->songpos;
-                m_PlayStep     = subsong->songstep;
             }
 		}
 	}
@@ -1357,9 +1375,15 @@ void handlePattern(JayPlayer* _this, int32_t channr) {
 	
     vc = &m_ChannelData[channr];
     
-    if (subsong->mute[channr]==1) return;
-    off = vc->patpos;
-    pat = subsong->orders[channr][vc->songpos].patnr;
+    if (m_PlayMode == SE_PM_PATTERN) {
+		if (channr > 0) return;  // just play channel 0
+		pat = m_CurrentPattern;
+		off = m_PatternOffset;
+    } else {
+        if (subsong->mute[channr]==1) return;
+        off = vc->patpos;
+        pat = subsong->orders[channr][vc->songpos].patnr;
+    }
 
     //init instrument
 	f = song->patterns[(pat*64)+off].srcnote;
@@ -1378,25 +1402,28 @@ void advanceSong(JayPlayer* _this) {
 	handleSong(_this);
 	for (i=0; i < subsong->nrofchans; i++) {
 		handlePattern(_this, i);
-		if(m_ChannelData[i].instrument!=-1) {// mute?
+		if(m_ChannelData[i].instrument != -1) {// mute?
 			handleInstrument(_this, i); //do volume and pitch things
-			handleEffects(_this, i);    //do channel effects 
+			handleEffects(_this, i);    //do instrument effects 
 		}
 	}
 }
 
-//void SoundEngine::PlayPattern(int32_t PatternNr)
+void PlayPattern(JayPlayer* _this, int PatternNr) {
+	m_PlayFlg = 1;
+	m_CurrentPattern = PatternNr;
+	m_PatternOffset = 63;
+	m_PatternDelay = 1;
+	m_PlayMode = SE_PM_PATTERN;
+	m_PlaySpeed = song->subsongs[0]->songspd - song->subsongs[0]->groove;
+}
 
 //---------------------API
 
 int jaytrax_loadSong(JayPlayer* _this, Song* sng) {
-    int version = sng->header.mugiversion;
-    if (version >= 3456 && version <= 3457) {
-		song = sng;
-		return 1;
-	}
-	printf("Bad song ver: %d\n", version);
-	return 0;
+    song = sng;
+    jaytrax_playSubSong(_this, 0);
+    return 1;
 }
 
 // This function ensures that the play routine is called properly and everything is initialized in a good way
@@ -1406,10 +1433,10 @@ void jaytrax_playSubSong(JayPlayer* _this, int subsongnr) {
 
 	if (subsongnr > song->header.nrofsongs) return;
 	m_CurrentSubsong = subsongnr;
-	subsong = song->subsongs[m_CurrentSubsong];
+	subsong = song->subsongs[subsongnr];
 	clearSoundBuffers(_this);
 
-	for(t=0;t < SE_NROFCHANS;t++) {
+	for(t=0; t < SE_NROFCHANS; t++) {
 		int endpos;
 		int lastmaat;
         
@@ -1442,27 +1469,27 @@ void jaytrax_playSubSong(JayPlayer* _this, int subsongnr) {
 	m_PlaySpeed = 8+subsong->groove;
     //m_PlaySpeed = 8;
 
-	if (subsong->songspd) {
+	if (subsong->songspd != 0) {
 		float t;
-		t=(float)subsong->songspd; //bpm
-		t/=60.0;                   //bps
-		t*=32.0;
-		m_TimeSpd=(int)(44100.0/t);
-		m_TimeCnt = m_TimeSpd;
+		t  = (float)subsong->songspd; //bpm
+		t /= 60.0;                    //bps
+		t *= 32.0;
+		m_TimeCnt = m_TimeSpd = (int)(44100.0/t);
 	}
 
 	if(subsong->songstep == 0) {
-		m_PlayPosition=subsong->songpos-1;
+		m_PlayPosition = subsong->songpos - 1;
 	} else {
-		m_PlayPosition=subsong->songpos;
+		m_PlayPosition = subsong->songpos;
 	}
-	m_PlayStep=subsong->songstep-1;
+	m_PlayStep  = subsong->songstep - 1;
 	m_PlayStep &= 63;
 }
 
 void jaytrax_stopSong(JayPlayer* _this) {
-	m_PlayFlg = 0;
+	m_PlayFlg  = 0;
 	m_PauseFlg = 0;
+	m_PlayMode = SE_PM_SONG;
 	if(song) {
 		m_PlayPosition = subsong->songpos;
 		m_PlayStep     = subsong->songstep;
@@ -1479,6 +1506,7 @@ void jaytrax_continueSong(JayPlayer* _this) {
 
 JayPlayer* jaytrax_init() {
     JayPlayer* _this = NULL;
+	//lazy static init
     if (!isStaticInit) {
         int32_t i, j;
         double f,y;
@@ -1499,13 +1527,11 @@ JayPlayer* jaytrax_init() {
         for (i=0;i<256;i++) {
             m_sineTab[i] = (int16_t)(sin((M_PI*i)/128)*32760);
         }
-        //empty wave
-        memset(&m_emptyWave, 0, sizeof(int16_t)*256);
         
         isStaticInit = 1;
     }
     
-    //------------------
+    //init instance
 	m_OverlapCnt = 0;
 	
 	m_PlayPosition = 0;	 // waar is de song nu?
@@ -1516,7 +1542,8 @@ JayPlayer* jaytrax_init() {
 
 	m_PatternDelay = 0;
 	m_PlaySpeed = 0;
-	m_MasterVolume = 0;
+	m_MasterVolume = 256;
+	m_PlayMode = SE_PM_SONG;
 
 	song = NULL;
 	subsong = NULL;
@@ -1539,14 +1566,12 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 	int16_t amplification;							// amount to amplify afterwards
 	uint16_t echodelaytime;					//delaytime for echo (differs for MIDI or songplayback)
     int16_t m_NrOfChannels;
-	
-	m_NrOfChannels = subsong->nrofchans;
 	// we calc nrofsamples samples in blocks of 'm_TimeCnt' big (de songspd)
 
 	r=0;
-	while(nrofsamples>0) {
+	while (nrofsamples > 0) {
         // 2 possibilities:  we calc a complete m_TimeCnt block...or the last part of a m_TimeCnt block...
-		if(m_TimeCnt<nrofsamples) {
+		if (m_TimeCnt<nrofsamples) {
 			nos = m_TimeCnt;   //Complete block
 			m_TimeCnt=(m_TimeSpd*frequency)/44100;
 		} else {
@@ -1554,76 +1579,81 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 			m_TimeCnt=m_TimeCnt-nos; 
 		}
 		nrofsamples-=nos;
-
-		// preparation of wave pointers and freq offset
-		for(i=0; i<m_NrOfChannels; i++) {
-			Voice* vc;
-			int32_t instnr;
-			int16_t volMain, volEcho;
-            
-            vc = &m_ChannelData[i];
-			instnr = vc->instrument;
-			if (instnr == -1) { // mute?
-				vc->wavePtr  = &m_emptyWave[0];
-				vc->isSample = 0;
-			} else {
-				if(vc->sampledata) {
-					vc->wavePtr  = (short *)vc->sampledata;
-					vc->isSample = 1;
-				} else {
-                    Inst* inst = song->instruments[instnr];
-					vc->wavePtr    = &vc->waves[256*inst->waveform];
-					vc->waveLength = ((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
-					vc->isSample   = 0;
-				}
-			}
-			
-            //calculate frequency
-			if(vc->curfreq<10) vc->curfreq = 10;
-			vc->freqOffset = (256*vc->curfreq)/frequency;
-			
-			//gains
-			volMain = (vc->curvol+10000)/39;
-			if (volMain > 256) volMain = 256;
-			volEcho = subsong->delayamount[i];
-			
-			if (vc->curpan==0) { //panning?
-				vc->gainMainL=256; //center
-				vc->gainMainR=256;
-			} else {
-				if(vc->curpan>0) {
-					vc->gainMainL = 256-(vc->curpan);
-					vc->gainMainR = 256;
-				} else {
-					vc->gainMainL = 256;
-					vc->gainMainR = 256+(vc->curpan);
-				}
-			}
-			
-			//premultiply volumes
-			vc->gainMainL = (vc->gainMainL * volMain)>>8;
-			vc->gainMainR = (vc->gainMainR * volMain)>>8;
-			vc->gainEchoL = (vc->gainMainL * volEcho)>>8;
-			vc->gainEchoR = (vc->gainMainR * volEcho)>>8;
-		}
-		amplification = subsong->amplification;
-		echodelaytime = subsong->delaytime;
-
+		
 		if (!outbuf) {
-			r += (nos*2);   //stereo
+			//times two for stereo
+			r += (nos*2);
 		} else {
-			if(m_NrOfChannels == 0) {
+			if (!song || !subsong || subsong->nrofchans == 0) {
 				for(i=0; i<nrofsamples; i++) { //c lean renderbuffer
 					outbuf[r++] = 0;
 					outbuf[r++] = 0;
 				}
 			} else {
+                m_NrOfChannels = subsong->nrofchans;
+                
+                // preparation of wave pointers and freq offset
+                for(i=0; i < m_NrOfChannels; i++) {
+                    Voice* vc;
+                    int16_t instnr;
+                    int32_t volMain, volEcho;
+                    
+                    vc = &m_ChannelData[i];
+                    instnr = vc->instrument;
+                    if (instnr == -1) { // mute?
+                        vc->wavePtr  = NULL;
+                    } else {
+                        if(vc->sampledata) {
+                            vc->wavePtr  = (int16_t*)vc->sampledata;
+                            vc->isSample = 1;
+                        } else {
+                            Inst* inst = song->instruments[instnr];
+                            vc->wavePtr    = &vc->waves[256*inst->waveform];
+                            vc->waveLength = ((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
+                            vc->isSample   = 0;
+                        }
+                    }
+                    
+                    //calculate frequency
+                    if(vc->curfreq<10) vc->curfreq = 10;
+                    vc->freqOffset = (256*vc->curfreq)/frequency;
+                    
+                    if (vc->curpan==0) { //panning?
+                        vc->gainMainL=256; //center
+                        vc->gainMainR=256;
+                    } else {
+                        if(vc->curpan>0) {
+                            vc->gainMainL = 256-(vc->curpan);
+                            vc->gainMainR = 256;
+                        } else {
+                            vc->gainMainL = 256;
+                            vc->gainMainR = 256+(vc->curpan);
+                        }
+                    }
+					
+					//gains
+					volMain = (vc->curvol+10000)/39;
+					if (volMain > 256) volMain = 256;
+					volEcho = subsong->delayamount[i];
+                    
+                    //premultiply volumes
+                    vc->gainMainL = (vc->gainMainL * volMain)>>8;
+                    vc->gainMainR = (vc->gainMainR * volMain)>>8;
+                    vc->gainEchoL = (vc->gainMainL * volEcho)>>8;
+                    vc->gainEchoR = (vc->gainMainR * volEcho)>>8;
+                }
+                amplification = subsong->amplification;
+                echodelaytime = subsong->delaytime;
+                
 				for(p=0; p<nos; p++) {
 					lsample = rsample = echosamplel = echosampler = 0;
 					
 					for(c=0; c < m_NrOfChannels; c++) {
 						Voice* vc = &m_ChannelData[c];
 						int32_t samp;
+						
+						//no instrument
+						if (!vc->wavePtr) continue;
 						
 						if (vc->isSample) {
 							if (vc->samplepos != -1) {
@@ -1641,10 +1671,10 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 											vc->samplepos = -1;
 										} else { // looping
 											if(vc->bidirecflg == 0) { //straight loop
-												vc->samplepos  -= (vc->endpoint - vc->looppoint);
+												vc->samplepos   -= (vc->endpoint - vc->looppoint);
 											} else { //bidi loop
-												vc->samplepos  -= vc->freqOffset;
-												vc->curdirecflg = 1;
+												vc->samplepos   -= vc->freqOffset;
+												vc->curdirecflg  = 1;
 											}
 										}
 									}
@@ -1658,7 +1688,7 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 								}
 							}
 						} else {
-							samp = vc->wavePtr[vc->synthPos>>8];
+							samp 		  = vc->wavePtr[vc->synthPos>>8];
 							lsample      += (samp * vc->gainMainL)>>8;
 							rsample      += (samp * vc->gainMainR)>>8;
 							echosamplel  += (samp * vc->gainEchoL)>>8;
@@ -1699,8 +1729,7 @@ void jaytrax_renderChunk(JayPlayer* _this, int16_t* outbuf, int32_t nrofsamples,
 
 			m_OverlapCnt=0; //reset overlap counter
 			tempdelaycnt=m_DelayCnt;
-			for(c=0;c<SE_NROFCHANS;c++)
-			{
+			for(c=0;c<SE_NROFCHANS;c++) {
 				tempwavepos[c] = m_ChannelData[c].synthPos;
 			}
 			
