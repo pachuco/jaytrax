@@ -219,11 +219,11 @@ struct JayPlayer {
     int32_t		m_PatternOffset;    // Current play offset in the pattern (used for display)
 };
 
-int   jaytrax_loadSong(JayPlayer* _T, Song* sng);
-void  jaytrax_playSubSong(JayPlayer* _T, int subsongnr);
-void  jaytrax_stopSong(JayPlayer* _T);
-void  jaytrax_pauseSong(JayPlayer* _T);
-void  jaytrax_continueSong(JayPlayer* _T);
+int   jaytrax_loadSong(JayPlayer* THIS, Song* sng);
+void  jaytrax_playSubSong(JayPlayer* THIS, int subsongnr);
+void  jaytrax_stopSong(JayPlayer* THIS);
+void  jaytrax_pauseSong(JayPlayer* THIS);
+void  jaytrax_continueSong(JayPlayer* THIS);
 JayPlayer* jaytrax_init();
-void  jaytrax_renderChunk(JayPlayer* _T, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
+void  jaytrax_renderChunk(JayPlayer* THIS, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
 #endif
