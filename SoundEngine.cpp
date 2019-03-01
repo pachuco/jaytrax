@@ -2168,7 +2168,7 @@ void SoundEngine::FreeSong(void)
 
 #define FILEREAD(dest, size) {memcpy((dest), file+ReadIndex, (size)); ReadIndex +=(size);}
 
-int SoundEngine::LoadSongFromMemory(unsigned char *file)
+int SoundEngine::LoadSong(unsigned char *file)
 {
 	int ReadIndex;
 	bool curdirflg;
