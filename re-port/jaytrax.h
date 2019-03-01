@@ -183,6 +183,11 @@ struct Voice {
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
+enum SE_PLAYMODE {
+	SE_PM_SONG = 0,
+	SE_PM_PATTERN
+};
+
 //---------------------API
 
 //this holds replayer state
