@@ -8,7 +8,7 @@ set outname=jaytrax
 
 set PATH=%PATH%;%gccbase%\bin;%fbcbase%
 del %outname%.exe
-gcc -o %outname%.exe main.c jxs.c jaytrax.c %opts% %link% 2> err.log
+gcc -o %outname%.exe main.c jxs.c jaytrax.c mixcore.c %opts% %link% 2> err.log
 
-%outname%.exe bumpnburn(8).jxs
+%outname%.exe 090301.jxs
 pause
