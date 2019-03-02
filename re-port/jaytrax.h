@@ -185,7 +185,7 @@ struct Voice {
 
 //---------------------gubbins
 
-#define SE_OVERLAP (50)    // overlap duration in samples, for declick
+#define SE_OVERLAP (10)    // overlap duration in samples, for declick
 #define MIXBUF_LEN (256)    
 #define MIXBUF_NR  (4)	    // interleaved: mainL, mainR, echoL, echoR
 

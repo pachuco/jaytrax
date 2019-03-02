@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
 #include "jaytrax.h"
 #include "mixcore.h"
 
@@ -1534,7 +1535,35 @@ JayPlayer* jaytrax_init() {
 }
 
 
-// work copy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//#define NO_OVERLAP
+
+typedef struct TempVars TempVars;
+struct TempVars {
+	int32_t synthPos;
+	int32_t sampPos;
+	uint8_t sampDirection;
+};
+
+//backup
 void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, int32_t frequency) {
 	int16_t ic, is;
 	int32_t r;
@@ -1545,11 +1574,14 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 	
 	r = 0;
 	while (nrofsamples > 0) {
+        int32_t actualOvlap, frameLen;
         int16_t nos;
-		// either m_TimeCnt-sized block or smaller remainder that fills nrofsamples 
+		
+        frameLen = (THIS->m_TimeSpd * frequency) / 44100;
+        actualOvlap = MIN(SE_OVERLAP, frameLen);
 		if (THIS->m_TimeCnt<nrofsamples) {
 			nos = THIS->m_TimeCnt;   //Complete block
-			THIS->m_TimeCnt = (THIS->m_TimeSpd * frequency) / 44100;
+			THIS->m_TimeCnt = frameLen;
 		} else {
 			nos = nrofsamples;  //Last piece
 			THIS->m_TimeCnt = THIS->m_TimeCnt - nos; 
@@ -1568,7 +1600,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 			} else {
 				chanNr = THIS->m_subsong->nrofchans;
 				
-				// preparation of wave pointers and freq offset
+				//preparation of wave pointers and freq offset
 				for(ic=0; ic < chanNr; ic++) {
 					Voice* vc;
 					int16_t instnr;
@@ -1621,7 +1653,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 				amplification = THIS->m_subsong->amplification;
 				echodelaytime = THIS->m_subsong->delaytime;
 				
-                //Main render
+                //main render
 				while (nos > 0) {
                     int16_t morenos  = MIN(nos, MIXBUF_LEN);
                     int16_t* overBuf = &THIS->m_OverlapBuffer[0];
@@ -1646,25 +1678,25 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 						lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
 						lsample *= amplification;
 						lsample /= 100;
+                        CLAMP(lsample, -32760, 32760);
 						
 						rsample  = ((rsample / chanNr) + delRBuf[delcnt]) / 2;
 						rsample *= amplification;
 						rsample /= 100;
-						
-                        //TODO: fix
-                        /*
-                        if(ocnt < SE_OVERLAP) {
-                            lsample  = (ocnt * lsample) / SE_OVERLAP;
-                            lsample += ((SE_OVERLAP - ocnt) * overBuf[ocnt*2+0]) / SE_OVERLAP;
-                            rsample  = (ocnt * rsample) / SE_OVERLAP;
-                            rsample += ((SE_OVERLAP - ocnt) * overBuf[ocnt*2+1]) / SE_OVERLAP;
+                        CLAMP(rsample, -32760, 32760);
+                        
+                        //interpolate from overlap buffer
+                        if(ocnt < actualOvlap) {
+                            int32_t lovlapsamp, rovlapsamp;
+                            lovlapsamp = overBuf[ocnt*2+0];
+                            rovlapsamp = overBuf[ocnt*2+1];
+                            lsample  = ((lsample * (ocnt)) / actualOvlap) + ((lovlapsamp * (actualOvlap - ocnt)) / actualOvlap);
+                            rsample  = ((rsample * (ocnt)) / actualOvlap) + ((rovlapsamp * (actualOvlap - ocnt)) / actualOvlap);
                             THIS->m_OverlapCnt++;
                         }
-                        */
-						
-                        //-32760, 32760
-						outbuf[r++] = CLAMP16(lsample);
-						outbuf[r++] = CLAMP16(rsample);
+                        
+						outbuf[r++] = lsample;
+						outbuf[r++] = rsample;
 						
 						delLBuf[delcnt] = ((echosamplel / chanNr) + delLBuf[delcnt]) / 2;
 						delRBuf[delcnt] = ((echosampler / chanNr) + delRBuf[delcnt]) / 2;
@@ -1677,70 +1709,74 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 			}
 		}
 		
-		if(THIS->m_TimeCnt==((THIS->m_TimeSpd*frequency)/44100)) {
-			unsigned short tempwavepos[SE_NROFCHANS];		// last position per channel in the waveform(8bit fixed point)(temporarily storage)
-			unsigned short tempdelaycnt;		// ditto
-			
-			// why is only synthpos backed up if we also have sample mixing in the repeat loop???
-			THIS->m_OverlapCnt = 0; //reset overlap counter
+		if(THIS->m_TimeCnt == frameLen) {
+			TempVars temp[SE_NROFCHANS];
+			int32_t tempdelaycnt;
+            
 			tempdelaycnt = THIS->m_DelayCnt;
-			for(ic=0; ic<SE_NROFCHANS; ic++) {
-				tempwavepos[ic] = THIS->m_ChannelData[ic].synthPos;
+			for(ic=0; ic < SE_NROFCHANS; ic++) {
+				Voice* vc = &THIS->m_ChannelData[ic];
+				
+				temp[ic].synthPos      = vc->synthPos;
+				temp[ic].sampPos       = vc->samplepos;
+				temp[ic].sampDirection = vc->curdirecflg;
 			}
-			
-			//TODO: here, we prepare m_OverlapBuffer(repeat of above mixing loop)
-            if (outbuf && THIS->m_song && !THIS->m_subsong && THIS->m_subsong->nrofchans != 0) {
-                nos = SE_OVERLAP;
+            
+            if (outbuf && THIS->m_song && THIS->m_subsong && THIS->m_subsong->nrofchans != 0) {
+                int16_t nos2 = actualOvlap;
                 chanNr = THIS->m_subsong->nrofchans;
                 
-                //overlap render
-                while (nos > 0) {
-                    int16_t morenos  = MIN(nos, MIXBUF_LEN);
+                //render to overlap buffer
+                while (nos2 > 0) {
+                    int16_t morenos  = MIN(nos2, MIXBUF_LEN);
                     int16_t* overBuf = &THIS->m_OverlapBuffer[0];
                     int16_t* delLBuf = &THIS->m_LeftDelayBuffer[0];
                     int16_t* delRBuf = &THIS->m_RightDelayBuffer[0];
                     int32_t* tempBuf = &THIS->tempBuf[0];
                     
                     jaymix_mixCore(THIS, morenos);
-                    
+                    assert(actualOvlap - THIS->m_OverlapCnt == 0);
 					for(is=0; is < morenos; is++) {
-						int32_t lsample, rsample, echosamplel, echosampler;
+						int32_t lsample, rsample;
 						int32_t off = MIXBUF_NR * is;
                         int32_t ocnt = THIS->m_OverlapCnt;
                         int32_t delcnt = THIS->m_DelayCnt;
 						
-						lsample     = tempBuf[off + 0];
-						rsample     = tempBuf[off + 1];
-						echosamplel = tempBuf[off + 2];
-						echosampler = tempBuf[off + 3];
+						lsample  = tempBuf[off + 0];
+						rsample  = tempBuf[off + 1];
 						
 						lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
 						lsample *= amplification;
 						lsample /= 100;
+                        CLAMP(lsample, -32760, 32760);
 						
 						rsample  = ((rsample / chanNr) + delRBuf[delcnt]) / 2;
 						rsample *= amplification;
 						rsample /= 100;
+                        CLAMP(rsample, -32760, 32760);
 						
-						overBuf[is*2+0] = CLAMP16(lsample);
-						overBuf[is*2+1] = CLAMP16(rsample);
+						overBuf[(actualOvlap - ocnt)*2+0] = lsample;
+						overBuf[(actualOvlap - ocnt)*2+1] = rsample;
 						
-						//delLBuf[delcnt] = ((echosamplel / chanNr) + delLBuf[delcnt]) / 2;
-						//delRBuf[delcnt] = ((echosampler / chanNr) + delRBuf[delcnt]) / 2;
 						THIS->m_DelayCnt++;
 						THIS->m_DelayCnt %= echodelaytime / (44100 / frequency);
+						THIS->m_OverlapCnt--;
 					}
-                    
-                    nos -= morenos;
+                    assert(THIS->m_OverlapCnt == 0);
+                    nos2 -= morenos;
                 }
             }
 			
-			THIS->m_DelayCnt =tempdelaycnt;
+			THIS->m_DelayCnt = tempdelaycnt;
 			
-			for(ic=0; ic<SE_NROFCHANS; ic++) {
-				THIS->m_ChannelData[ic].synthPos = tempwavepos[ic];
+			for(ic=0; ic < SE_NROFCHANS; ic++) {
+				Voice* vc = &THIS->m_ChannelData[ic];
+				
+				vc->synthPos    = temp[ic].synthPos;
+				vc->samplepos   = temp[ic].sampPos;
+				vc->curdirecflg = temp[ic].sampDirection;
 			}
-			
+            
 			//Update song pointers
 			advanceSong(THIS);
 		}

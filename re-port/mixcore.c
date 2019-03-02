@@ -32,12 +32,9 @@ uint8_t doPosSamp(Voice* vc) {
     return 1;
 }
 
-uint8_t doPosSynt(Voice* vc) {
-    vc->synthPos += vc->freqOffset;
-    vc->synthPos &= vc->waveLength;
-    return 1;
-}
-
+#define ITP_T02_I24_08_LINEAR(P, F) ((P[0]*(0x100-F) + P[1] * F)>>8)
+#define ITP_T03_I17_15_QUADRA(P, F) (((((((((P[0] + P[2]) >> 1) - P[1]) * F) >> 16) + P[1]) - ((P[2] + P[0] + (P[0] << 1)) >> 2)) * F) >> 14) + P[0]
+#define ITP_T04_FLOAT__CUBIC(P, F)  (P[1] + 0.5 * F*(P[2] - P[0] + F*(2.0 * P[0] - 5.0 * P[1] + 4.0 * P[2] - P[3] + F * (3.0 * (P[1] - P[2]) + P[3] - P[0]))))
 //---------------------interpolators for sample
 
 int32_t mixSampNone(Voice* vc, int32_t* p) {
@@ -61,61 +58,51 @@ int32_t mixSampCubic(Voice* vc, int32_t* p) {
 }
 
 //---------------------interpolators for synth
-#define SYN_GETPT(x) vc->wavePtr[((vc->synthPos+(x)) & vc->waveLength)>>8]
-//in: int32_t s1,s2,s3 = -32768..32767 | f = 0..65535 (frac) | out: s1 = -32768..32767
-#define INTERPOLATE16(s1, s2, s3, f) \
-{ \
-    int32_t frac, s4; \
-    \
-    frac = (f) >> 1; \
-    s4 = (s1 + s3) >> 1; \
-    s4 -= s2; \
-    s4 = (s4 * frac) >> 16; \
-    s3 += s1; \
-    s1 += s1; \
-    s3 = (s3 + s1) >> 2; \
-    s1 >>= 1; \
-    s4 += s2; \
-    s4 -= s3; \
-    s4 = (s4 * frac) >> 14; \
-    s1 += s4; \
-} \
+#define SYN_GETPT(x) vc->wavePtr[((vc->synthPos + ((x)<<8)) & vc->waveLength)>>8]
 
-int32_t mixSyntNone(Voice* vc, int32_t* p) {
+int32_t mixSynthNone(Voice* vc, int32_t* p) {
     return 0;
 }
 
-int32_t mixSyntNearest(Voice* vc, int32_t* p) {
-    return SYN_GETPT(0);
+int32_t mixSynthNearest(Voice* vc, int32_t* p) {
+    int32_t x;
+    
+    x = SYN_GETPT(0);
+    return x;
 }
 
-int32_t mixSyntLinear(Voice* vc, int32_t* p) {
+int32_t mixSynthLinear(Voice* vc, int32_t* p) {
+    int32_t x;
     int32_t frac = vc->synthPos & 0xFF;
     p[0] = SYN_GETPT(0);
     p[1] = SYN_GETPT(1);
-    return (p[0] * (0x100-frac) + p[1] * frac)>>8;
-}
-
-int32_t mixSyntQuad(Voice* vc, int32_t* p) {
-    int32_t frac;
-    p[0] = SYN_GETPT(-1);
-    p[1] = SYN_GETPT(0);
-    p[2] = SYN_GETPT(1);
     
-    frac = (vc->synthPos<<7) & 0x7FFF;
-    //stolen from Impulse Tracker and mangled into inline form
-    return ((((((((p[0] + p[2]) >> 1) - p[1]) * frac) >> 16) + p[1] - (p[2] + p[0] * 3) >> 2) * frac) >> 14) + ((p[0] * 2) >> 1);
+    x = ITP_T02_I24_08_LINEAR(p, frac);
+    return x;
 }
 
-int32_t mixSyntCubic(Voice* vc, int32_t* p) {
+int32_t mixSynthQuad(Voice* vc, int32_t* p) {
+    int32_t x;
+    int32_t frac = (vc->synthPos & 0xFF)<<7;
+    p[0] = SYN_GETPT(0);
+    p[1] = SYN_GETPT(1);
+    p[2] = SYN_GETPT(2);
+    
+    x  = ITP_T03_I17_15_QUADRA(p, frac);
+    return x;
+}
+
+int32_t mixSynthCubic(Voice* vc, int32_t* p) {
+    int32_t x;
     double frac = (double)(vc->synthPos & 0xFF)/255;
     
-    p[0] = SYN_GETPT(-1);
-    p[1] = SYN_GETPT(0);
-    p[2] = SYN_GETPT(1);
-    p[3] = SYN_GETPT(2);
+    p[0] = SYN_GETPT(0);
+    p[1] = SYN_GETPT(1);
+    p[2] = SYN_GETPT(2);
+    p[3] = SYN_GETPT(3);
     
-    return p[1] + 0.5 * frac*(p[2] - p[0] + frac*(2.0*p[0] - 5.0*p[1] + 4.0*p[2] - p[3] + frac*(3.0*(p[1] - p[2]) + p[3] - p[0])));
+    x = ITP_T04_FLOAT__CUBIC(p, frac);
+    return x;
 }
 
 //---------------------API
@@ -132,30 +119,47 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
     for (ic=0; ic < chanNr; ic++) {
         Voice* vc = &THIS->m_ChannelData[ic];
         int32_t (*f_interp) (Voice* vc, int32_t* pBuf);
-        uint8_t (*f_doPos)  (Voice* vc);
         int32_t* pos;
         
-        if (!vc->wavePtr) continue;
-        if (vc->isSample) {
+        if (vc->isSample) { //synth render
+            if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
             f_interp = &mixSampNearest;
-            f_doPos  = &doPosSamp;
-        } else {
-            f_interp = &mixSyntLinear;
-            f_doPos  = &doPosSynt;
-        }
-        
-        for(is=0; is < numSamples; is++) {
-            int32_t samp, off;
             
-            samp = f_interp(vc, &pBuf);
-            off  = MIXBUF_NR * is;
-            tempBuf[off + 0] += (samp * vc->gainMainL)>>8;
-            tempBuf[off + 1] += (samp * vc->gainMainR)>>8;
-            tempBuf[off + 2] += (samp * vc->gainEchoL)>>8;
-            tempBuf[off + 3] += (samp * vc->gainEchoR)>>8;
+            for(is=0; is < numSamples; is++) {
+                int32_t samp, off;
+                
+                samp = f_interp(vc, &pBuf);
+                off  = is * MIXBUF_NR;
+                tempBuf[off + 0] += (samp * vc->gainMainL)>>8;
+                tempBuf[off + 1] += (samp * vc->gainMainR)>>8;
+                tempBuf[off + 2] += (samp * vc->gainEchoL)>>8;
+                tempBuf[off + 3] += (samp * vc->gainEchoR)>>8;
+                
+                if (!doPosSamp(vc)) break;
+            }
+        } else { //sample render
+            if (!vc->wavePtr) {
+                //original replayer plays through an empty wave
+                vc->synthPos += vc->freqOffset * numSamples;
+                vc->synthPos &= vc->waveLength;
+                continue;
+            }
+            f_interp = &mixSynthCubic;
             
-            if (!f_doPos(vc)) break;
+            for(is=0; is < numSamples; is++) {
+                int32_t samp, off;
+                
+                samp = f_interp(vc, &pBuf);
+                off  = is * MIXBUF_NR;
+                tempBuf[off + 0] += (samp * vc->gainMainL)>>8;
+                tempBuf[off + 1] += (samp * vc->gainMainR)>>8;
+                tempBuf[off + 2] += (samp * vc->gainEchoL)>>8;
+                tempBuf[off + 3] += (samp * vc->gainEchoR)>>8;
+                
+                vc->synthPos += vc->freqOffset;
+                vc->synthPos &= vc->waveLength;
+            }
         }
     }
 }
