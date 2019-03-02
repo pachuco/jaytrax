@@ -62,7 +62,8 @@ int32_t mixSampCubic(Voice* vc, int32_t* p) {
 
 //---------------------interpolators for synth
 #define SYN_GETPT(x) vc->wavePtr[((vc->synthPos+(x)) & vc->waveLength)>>8]
-#define INTERPOLATE16(s1, s2, s3, f) /* in: int32_t s1,s2,s3 = -32768..32767 | f = 0..65535 (frac) | out: s1 = -32768..32767 */ \
+//in: int32_t s1,s2,s3 = -32768..32767 | f = 0..65535 (frac) | out: s1 = -32768..32767
+#define INTERPOLATE16(s1, s2, s3, f) \
 { \
     int32_t frac, s4; \
     \
@@ -96,16 +97,14 @@ int32_t mixSyntLinear(Voice* vc, int32_t* p) {
 }
 
 int32_t mixSyntQuad(Voice* vc, int32_t* p) {
+    int32_t frac;
     p[0] = SYN_GETPT(-1);
     p[1] = SYN_GETPT(0);
     p[2] = SYN_GETPT(1);
     
-    
-    int32_t frac, x;
-    frac = ((vc->samplepos<<8) & 0xFFFF) >> 1;
-    INTERPOLATE16(p[0], p[1], p[2], frac); x = p[0];
-    //x = ((((((((p[0] + p[2]) >> 1) - p[1]) * frac) >> 16) + p[1] - (p[2] + p[0] * 3) >> 2) * frac) >> 14) + ((p[0] * 2) >> 1);
-    return x;
+    frac = (vc->synthPos<<7) & 0x7FFF;
+    //stolen from Impulse Tracker and mangled into inline form
+    return ((((((((p[0] + p[2]) >> 1) - p[1]) * frac) >> 16) + p[1] - (p[2] + p[0] * 3) >> 2) * frac) >> 14) + ((p[0] * 2) >> 1);
 }
 
 int32_t mixSyntCubic(Voice* vc, int32_t* p) {
@@ -140,10 +139,10 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
         if (vc->isSample) {
             if (vc->samplepos < 0) continue;
             f_interp = &mixSampNearest;
-            f_doPos = &doPosSamp;
+            f_doPos  = &doPosSamp;
         } else {
-            f_interp = &mixSyntQuad;
-            f_doPos = &doPosSynt;
+            f_interp = &mixSyntLinear;
+            f_doPos  = &doPosSynt;
         }
         
         for(is=0; is < numSamples; is++) {
