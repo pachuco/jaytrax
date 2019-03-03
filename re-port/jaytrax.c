@@ -1331,7 +1331,7 @@ void clearSoundBuffers(JayPlayer* THIS) {
 	int32_t i,j;
 
 	// clear delaybuffers
-    memset(THIS->m_OverlapBuffer,    0, SE_OVERLAP*2*sizeof(int16_t));
+    memset(THIS->m_OverlapBuffer,    0, SE_WANTEDOVERLAP*2*sizeof(int16_t));
 	memset(THIS->m_LeftDelayBuffer,  0, 65536*sizeof(int16_t));
 	memset(THIS->m_RightDelayBuffer, 0, 65536*sizeof(int16_t));
 
@@ -1574,11 +1574,11 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 	
 	r = 0;
 	while (nrofsamples > 0) {
-        int32_t actualOvlap, frameLen;
+        int32_t availOvlap, frameLen;
         int16_t nos;
 		
         frameLen = (THIS->m_TimeSpd * frequency) / 44100;
-        actualOvlap = MIN(SE_OVERLAP, frameLen);
+        availOvlap = MIN(SE_WANTEDOVERLAP, frameLen);
 		if (THIS->m_TimeCnt<nrofsamples) {
 			nos = THIS->m_TimeCnt;   //Complete block
 			THIS->m_TimeCnt = frameLen;
@@ -1670,10 +1670,10 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
                         int32_t ocnt = THIS->m_OverlapCnt;
                         int32_t delcnt = THIS->m_DelayCnt;
 						
-						lsample     = tempBuf[off + 0];
-						rsample     = tempBuf[off + 1];
-						echosamplel = tempBuf[off + 2];
-						echosampler = tempBuf[off + 3];
+						lsample     = tempBuf[off + BUF_MAINL];
+						rsample     = tempBuf[off + BUF_MAINR];
+						echosamplel = tempBuf[off + BUF_ECHOL];
+						echosampler = tempBuf[off + BUF_ECHOR];
 						
 						lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
 						lsample *= amplification;
@@ -1686,12 +1686,12 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
                         CLAMP(rsample, -32760, 32760);
                         
                         //interpolate from overlap buffer
-                        if(ocnt < actualOvlap) {
+                        if(ocnt < availOvlap) {
                             int32_t lovlapsamp, rovlapsamp;
                             lovlapsamp = overBuf[ocnt*2+0];
                             rovlapsamp = overBuf[ocnt*2+1];
-                            lsample  = ((lsample * (ocnt)) / actualOvlap) + ((lovlapsamp * (actualOvlap - ocnt)) / actualOvlap);
-                            rsample  = ((rsample * (ocnt)) / actualOvlap) + ((rovlapsamp * (actualOvlap - ocnt)) / actualOvlap);
+                            lsample  = ((lsample * (ocnt)) / availOvlap) + ((lovlapsamp * (availOvlap - ocnt)) / availOvlap);
+                            rsample  = ((rsample * (ocnt)) / availOvlap) + ((rovlapsamp * (availOvlap - ocnt)) / availOvlap);
                             THIS->m_OverlapCnt++;
                         }
                         
@@ -1723,10 +1723,11 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 			}
             
             if (outbuf && THIS->m_song && THIS->m_subsong && THIS->m_subsong->nrofchans != 0) {
-                int16_t nos2 = actualOvlap;
+                int16_t nos2 = availOvlap;
                 chanNr = THIS->m_subsong->nrofchans;
                 
                 //render to overlap buffer
+                assert(availOvlap - THIS->m_OverlapCnt == 0);
                 while (nos2 > 0) {
                     int16_t morenos  = MIN(nos2, MIXBUF_LEN);
                     int16_t* overBuf = &THIS->m_OverlapBuffer[0];
@@ -1734,16 +1735,17 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
                     int16_t* delRBuf = &THIS->m_RightDelayBuffer[0];
                     int32_t* tempBuf = &THIS->tempBuf[0];
                     
+                    
                     jaymix_mixCore(THIS, morenos);
-                    assert(actualOvlap - THIS->m_OverlapCnt == 0);
+                    
 					for(is=0; is < morenos; is++) {
 						int32_t lsample, rsample;
 						int32_t off = MIXBUF_NR * is;
                         int32_t ocnt = THIS->m_OverlapCnt;
                         int32_t delcnt = THIS->m_DelayCnt;
 						
-						lsample  = tempBuf[off + 0];
-						rsample  = tempBuf[off + 1];
+						lsample  = tempBuf[off + BUF_MAINL];
+						rsample  = tempBuf[off + BUF_MAINR];
 						
 						lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
 						lsample *= amplification;
@@ -1755,16 +1757,16 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 						rsample /= 100;
                         CLAMP(rsample, -32760, 32760);
 						
-						overBuf[(actualOvlap - ocnt)*2+0] = lsample;
-						overBuf[(actualOvlap - ocnt)*2+1] = rsample;
+						overBuf[(availOvlap - ocnt)*2+0] = lsample;
+						overBuf[(availOvlap - ocnt)*2+1] = rsample;
 						
 						THIS->m_DelayCnt++;
 						THIS->m_DelayCnt %= echodelaytime / (44100 / frequency);
 						THIS->m_OverlapCnt--;
 					}
-                    assert(THIS->m_OverlapCnt == 0);
                     nos2 -= morenos;
                 }
+                assert(THIS->m_OverlapCnt == 0);
             }
 			
 			THIS->m_DelayCnt = tempdelaycnt;

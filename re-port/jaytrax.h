@@ -1,6 +1,21 @@
 #ifndef JAYTRAX_H
 #define JAYTRAX_H
 
+#define SE_WANTEDOVERLAP (15)    //wanted declick overlap length(in samples). Will be smaller than a song tick.
+#define MIXBUF_LEN (256)         //temporary mixing buffer length
+#define MIXBUF_NR  (4)           //number of such buffers. See below enum for their types.
+enum SE_BUFTYPE {
+    BUF_MAINL,
+    BUF_MAINR,
+    BUF_ECHOL,
+    BUF_ECHOR
+};
+
+enum SE_PLAYMODE {
+	SE_PM_SONG = 0,
+	SE_PM_PATTERN
+};
+
 //in case of changing any of the below
 //please change jxs loader to account for changes
 #define SE_ORDERS_SUBSONG (256)
@@ -11,7 +26,6 @@
 #define SE_ARPS_SONG (16)
 #define SE_STEPS_ARP (16)
 #define SE_NAMELEN (32)
-
 
 #define SE_NROFCHANS (16)           // number of chans replayer can take
 #define SE_NROFFINETUNESTEPS (16)	// number of finetune scales
@@ -183,17 +197,6 @@ struct Voice {
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
-//---------------------gubbins
-
-#define SE_OVERLAP (10)    // overlap duration in samples, for declick
-#define MIXBUF_LEN (256)    
-#define MIXBUF_NR  (4)	    // interleaved: mainL, mainR, echoL, echoR
-
-enum SE_PLAYMODE {
-	SE_PM_SONG = 0,
-	SE_PM_PATTERN
-};
-
 struct JayPlayer {
     Song*       m_song;
     Subsong*    m_subsong;
@@ -210,7 +213,7 @@ struct JayPlayer {
     int32_t     m_MasterVolume; // Mastervolume of the replayer (256=max - 0=min)
     int16_t     m_LeftDelayBuffer[65536];   // buffer to simulate an echo on the left stereo channel
     int16_t     m_RightDelayBuffer[65536];  // buffer to simulate an echo on the right stereo channel
-    int16_t     m_OverlapBuffer[SE_OVERLAP*2];	// Buffer which stores overlap between waveforms to avoid clicks
+    int16_t     m_OverlapBuffer[SE_WANTEDOVERLAP*2];	// Buffer which stores overlap between waveforms to avoid clicks
     int16_t     m_OverlapCnt;   // Used to store how much overlap we have already rendered
     uint16_t    m_DelayCnt;		// Internal counter used for delay
     int32_t     tempBuf[MIXBUF_LEN * MIXBUF_NR];
