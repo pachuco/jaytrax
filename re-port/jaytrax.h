@@ -5,6 +5,16 @@
 #define MIXBUF_LEN    (512)   //temporary mixing buffer length
 #define MIXBUF_NR     (4)     //number of such buffers. See below enum for their types.
 #define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
+
+enum INTERPOLATORS {
+    ITP_NONE,
+    ITP_NEAREST,
+    ITP_LINEAR,
+    ITP_QUADRATIC,
+    ITP_CUBIC,
+    ITP_BLEP
+};
+
 enum SE_BUFTYPE {
     BUF_MAINL,
     BUF_MAINR,
@@ -202,6 +212,14 @@ struct Voice {
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
+typedef struct Interpolator Interpolator;
+struct Interpolator {
+    uint8_t id;
+    int16_t numTaps;
+    int32_t (*f_itpSynth) (int16_t* p);
+    int32_t (*f_itpSamp)  (int16_t* p);
+};
+
 typedef struct JayPlayer JayPlayer;
 struct JayPlayer {
     Song*       m_song;
@@ -223,6 +241,7 @@ struct JayPlayer {
     int16_t     m_OverlapCnt;   // Used to store how much overlap we have already rendered
     uint16_t    m_DelayCnt;		// Internal counter used for delay
     int32_t     tempBuf[MIXBUF_LEN * MIXBUF_NR];
+    Interpolator* m_itp;
 
     int32_t	    m_PlayMode;		    // in which mode is the replayer? Song or patternmode?
     int32_t		m_CurrentPattern;	// Which pattern are we currently playing (In pattern play mode)

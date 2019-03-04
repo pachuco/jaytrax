@@ -57,9 +57,9 @@ int32_t mixSynthLinear(Voice* vc, int32_t* p) {
 int32_t mixSynthQuad(Voice* vc, int32_t* p) {
     int32_t x;
     int32_t frac = (vc->synthPos & 0xFF)<<7;
-    p[0] = SYN_GETPT(0);
-    p[1] = SYN_GETPT(1);
-    p[2] = SYN_GETPT(2);
+    p[0] = SYN_GETPT(-1);
+    p[1] = SYN_GETPT(0);
+    p[2] = SYN_GETPT(1);
     
     x  = ITP_T03_S16_I15_QUADRA(p, frac);
     return x;
@@ -69,34 +69,40 @@ int32_t mixSynthCubic(Voice* vc, int32_t* p) {
     int32_t x;
     double frac = (double)(vc->synthPos & 0xFF)/255;
     
-    p[0] = SYN_GETPT(0);
-    p[1] = SYN_GETPT(1);
-    p[2] = SYN_GETPT(2);
-    p[3] = SYN_GETPT(3);
+    p[0] = SYN_GETPT(-1);
+    p[1] = SYN_GETPT(0);
+    p[2] = SYN_GETPT(1);
+    p[3] = SYN_GETPT(2);
     
     x = ITP_T04_SXX_F01_CUBIC(p, frac);
     return x;
 }
 
+//uint8_t id;
+//uint8_t numTaps;
+//void    (*f_getSynthTaps) (int16_t* p);
+//int32_t (*f_getInterp)    (int16_t* p);
+
+Interpolator interps[] = {
+    {ITP_NONE,      0, &mixSynthNone,    &mixSampNearest},
+    {ITP_NEAREST,   1, &mixSynthNearest, &mixSampNearest},
+    {ITP_LINEAR,    2, &mixSynthLinear,  &mixSampNearest},
+    {ITP_QUADRATIC, 3, &mixSynthQuad,    &mixSampNearest},
+    {ITP_CUBIC,     4, &mixSynthCubic,   &mixSampNearest},
+    {ITP_BLEP,     -1, NULL,             NULL} //variable amount of taps
+};
+
 //---------------------API
 
-enum INTERPOLATORS {
-    ITP_NONE,
-    ITP_NEAREST,
-    ITP_LINEAR,
-    ITP_QUADRATIC,
-    ITP_CUBIC
-};
-
-typedef struct Interpolator Interpolator;
-struct Interpolator {
-    uint8_t numTaps;
-    void    (*f_getSynthTaps) (int16_t* p);
-    int32_t (*f_getInterp)    (int16_t* p);
-    uint8_t id;
-};
-
-
+uint8_t jaymix_setInterp(Interpolator** out, uint8_t id) {
+    for (int8_t i=0; i<sizeof(interps); i++) {
+        if (interps[i].id == id) {
+            *out = &interps[i];
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
     int32_t  tempBuf[MIXBUF_LEN];
@@ -120,7 +126,7 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
             //continue;
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
-            f_interp = &mixSampNearest;
+            f_interp = THIS->m_itp->f_itpSamp;
             
             while (doneSmp < numSamples) {
                 int32_t delta, fracMask, dif;
@@ -137,7 +143,7 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
                 }
                 dif = dif > 0 ? dif : 1;
                 nos = (dif / vc->freqOffset) + 1;
-                CLAMP(nos, 1, maxSmp);
+                if (nos > maxSmp) nos = maxSmp;
                 
                 //loop unroll optimization
                 if (nos&1) {
@@ -185,7 +191,7 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
                 vc->synthPos &= vc->waveLength;
                 continue;
             }
-            f_interp = &mixSynthCubic;
+            f_interp = THIS->m_itp->f_itpSynth;
             
             //loop unroll optimization
             nos = numSamples;

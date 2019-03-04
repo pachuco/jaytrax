@@ -1526,7 +1526,7 @@ JayPlayer* jaytrax_init() {
 	THIS->m_PlaySpeed = 0;
 	THIS->m_MasterVolume = 256;
 	THIS->m_PlayMode = SE_PM_SONG;
-
+    jaymix_setInterp(&THIS->m_itp, ITP_QUADRATIC);
 	THIS->m_song = NULL;
 	THIS->m_subsong = NULL;
 
@@ -1538,28 +1538,6 @@ JayPlayer* jaytrax_init() {
 	THIS->m_DelayCnt=0;
     return THIS;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//#define NO_OVERLAP
 
 typedef struct TempVars TempVars;
 struct TempVars {
