@@ -139,11 +139,20 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
                 nos = (dif / vc->freqOffset) + 1;
                 CLAMP(nos, 1, maxSmp);
                 
+                //loop unroll optimization
+                if (nos&1) {
+                    tempBuf[doneSmp] = f_interp(vc, &pBuf);
+                    vc->samplepos += delta;
+                    doneSmp++;
+                }
+                nos >>= 1;
                 for (is=0; is < nos; is++) {
-                    tempBuf[doneSmp + is] = f_interp(vc, &pBuf);
+                    tempBuf[doneSmp + (is << 1) + 0] = f_interp(vc, &pBuf);
+                    vc->samplepos += delta;
+                    tempBuf[doneSmp + (is << 1) + 1] = f_interp(vc, &pBuf);
                     vc->samplepos += delta;
                 }
-                doneSmp += nos;
+                doneSmp += nos << 1;
                 
                 if (vc->curdirecflg) { //backwards
                     if (vc->samplepos < vc->looppoint) {
@@ -168,6 +177,8 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
                 }
             }
         } else { //synth render
+            int32_t nos;
+            
             if (!vc->wavePtr) {
                 //original replayer plays through an empty wave
                 vc->synthPos += vc->freqOffset * numSamples;
@@ -176,13 +187,24 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
             }
             f_interp = &mixSynthCubic;
             
-            for(is=0; is < numSamples; is++) {
-                tempBuf[doneSmp + is] = f_interp(vc, &pBuf);
-                
+            //loop unroll optimization
+            nos = numSamples;
+            if (nos&1) {
+                tempBuf[doneSmp] = f_interp(vc, &pBuf);
+                vc->synthPos += vc->freqOffset;
+                vc->synthPos &= vc->waveLength;
+                doneSmp++;
+            }
+            nos >>= 1;
+            for(is=0; is < nos; is++) {
+                tempBuf[doneSmp + (is << 1) + 0] = f_interp(vc, &pBuf);
+                vc->synthPos += vc->freqOffset;
+                vc->synthPos &= vc->waveLength;
+                tempBuf[doneSmp + (is << 1) + 1] = f_interp(vc, &pBuf);
                 vc->synthPos += vc->freqOffset;
                 vc->synthPos &= vc->waveLength;
             }
-            doneSmp = numSamples;
+            doneSmp += nos << 1;
         }
         
         for(is=0; is < doneSmp; is++) {

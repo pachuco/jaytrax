@@ -2,7 +2,7 @@
 #define JAYTRAX_H
 
 #define WANTEDOVERLAP (15)    //wanted declick overlap length(in samples). Will be smaller than a song tick.
-#define MIXBUF_LEN    (256)   //temporary mixing buffer length
+#define MIXBUF_LEN    (512)   //temporary mixing buffer length
 #define MIXBUF_NR     (4)     //number of such buffers. See below enum for their types.
 #define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
 enum SE_BUFTYPE {
