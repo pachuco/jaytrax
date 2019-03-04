@@ -115,7 +115,7 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
         
         doneSmp = 0;
         if (vc->isSample) { //sample render
-            int16_t nos;
+            int32_t nos;
             
             //continue;
             if (!vc->wavePtr) continue;
@@ -123,26 +123,23 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
             f_interp = &mixSampNearest;
             
             while (doneSmp < numSamples) {
-                int32_t delta, fracMask;
+                int32_t delta, fracMask, dif;
+                int32_t maxSmp = numSamples - doneSmp;
                 
                 if (vc->curdirecflg) { //backwards
-                    nos   = (vc->samplepos - vc->looppoint) / vc->freqOffset;
+                    dif   = vc->samplepos - vc->looppoint - 1;
                     delta = vc->freqOffset * -1;
                     fracMask = 0xFF;
                 } else { //forwards
-                    nos   = (vc->endpoint - vc->samplepos) / vc->freqOffset;
+                    dif = vc->endpoint - vc->samplepos - 1;
                     delta = vc->freqOffset;
                     fracMask = 0x00;
                 }
-                
-                CLAMP(nos, 1, numSamples-doneSmp);
+                dif = dif > 0 ? dif : 1;
+                nos = (dif / vc->freqOffset) + 1;
+                CLAMP(nos, 1, maxSmp);
                 
                 for (is=0; is < nos; is++) {
-                    if (vc->curdirecflg) { //backwards
-                        if (vc->samplepos < vc->looppoint) printf("SHIT! Underflow!");
-                    } else { // forwards
-                        if (vc->samplepos >= vc->endpoint) printf("SHIT! Overflow!");
-                    }
                     tempBuf[doneSmp + is] = f_interp(vc, &pBuf);
                     vc->samplepos += delta;
                 }
@@ -170,42 +167,6 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
                     }
                 }
             }
-            
-            //old branched method
-            /*
-            for(is=0; is < numSamples; is++) {
-                int32_t samp;
-                
-                samp = f_interp(vc, &pBuf);
-                tempBuf[is] = samp;
-                
-                if (vc->curdirecflg == 0) { //going forwards
-                    vc->samplepos += vc->freqOffset;
-                    
-                    if (vc->samplepos >= vc->endpoint) {
-                        if (vc->loopflg == 0) { //one shot
-                            vc->samplepos = -1;
-                            break;
-                        } else { // looping
-                            vc->hasLooped = 1;
-                            if(vc->bidirecflg == 0) { //straight loop
-                                vc->samplepos   -= (vc->endpoint - vc->looppoint);
-                            } else { //bidi loop
-                                vc->samplepos   -= vc->freqOffset;
-                                vc->curdirecflg  = 1;
-                            }
-                        }
-                    }
-                } else { //going backwards
-                    vc->samplepos -= vc->freqOffset;
-                    
-                    if (vc->samplepos <= vc->looppoint) {
-                        vc->samplepos  += vc->freqOffset;
-                        vc->curdirecflg = 0;
-                    }
-                }
-            }
-            */
         } else { //synth render
             if (!vc->wavePtr) {
                 //original replayer plays through an empty wave
