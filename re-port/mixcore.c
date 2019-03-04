@@ -4,33 +4,6 @@
 #include "mixcore.h"
 #include "jaytrax.h"
 
-uint8_t doPosSamp(Voice* vc) {
-    if (vc->curdirecflg == 0) { //going forwards
-        vc->samplepos += vc->freqOffset;
-        
-        if (vc->samplepos >= vc->endpoint) {
-            if (vc->loopflg == 0) { //one shot
-                vc->samplepos = -1;
-                return 0;
-            } else { // looping
-                if(vc->bidirecflg == 0) { //straight loop
-                    vc->samplepos   -= (vc->endpoint - vc->looppoint);
-                } else { //bidi loop
-                    vc->samplepos   -= vc->freqOffset;
-                    vc->curdirecflg  = 1;
-                }
-            }
-        }
-    } else { //going backwards
-        vc->samplepos -= vc->freqOffset;
-        
-        if (vc->samplepos <= vc->looppoint) {
-            vc->samplepos  += vc->freqOffset;
-            vc->curdirecflg = 0;
-        }
-    }
-    return 1;
-}
 // ITP_[number of taps]_[input sample width]_[fractional precision]_[readable name]
 #define ITP_T02_S16_I08_LINEAR(P, F) ((P[0]*(0x100-F) + P[1] * F)>>8)
 #define ITP_T03_S16_I15_QUADRA(P, F) (((((((((P[0] + P[2]) >> 1) - P[1]) * F) >> 16) + P[1]) - ((P[2] + P[0] + (P[0] << 1)) >> 2)) * F) >> 14) + P[0]
@@ -107,9 +80,27 @@ int32_t mixSynthCubic(Voice* vc, int32_t* p) {
 
 //---------------------API
 
+enum INTERPOLATORS {
+    ITP_NONE,
+    ITP_NEAREST,
+    ITP_LINEAR,
+    ITP_QUADRATIC,
+    ITP_CUBIC
+};
+
+typedef struct Interpolator Interpolator;
+struct Interpolator {
+    uint8_t numTaps;
+    void    (*f_getSynthTaps) (int16_t* p);
+    int32_t (*f_getInterp)    (int16_t* p);
+    uint8_t id;
+};
+
+
+
 void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
     int32_t  tempBuf[MIXBUF_LEN];
-    int16_t  ic, is, actuallyRendered;
+    int16_t  ic, is, doneSmp;
     int32_t* outBuf = &THIS->tempBuf[0];
     int16_t  chanNr = THIS->m_subsong->nrofchans;
     int32_t  pBuf[MAX_TAPS];
@@ -117,25 +108,104 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
     assert(numSamples <= MIXBUF_LEN);
     memset(&outBuf[0], 0, numSamples * MIXBUF_NR * sizeof(int32_t));
     
-    is = 0;
+    
     for (ic=0; ic < chanNr; ic++) {
         Voice* vc = &THIS->m_ChannelData[ic];
         int32_t (*f_interp) (Voice* vc, int32_t* pBuf);
-        int32_t* pos;
         
+        doneSmp = 0;
         if (vc->isSample) { //sample render
+            int16_t nos;
+            
+            //continue;
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
             f_interp = &mixSampNearest;
             
+            while (doneSmp < numSamples) {
+                int32_t delta, fracMask;
+                
+                if (vc->curdirecflg) { //backwards
+                    nos   = (vc->samplepos - vc->looppoint) / vc->freqOffset;
+                    delta = vc->freqOffset * -1;
+                    fracMask = 0xFF;
+                } else { //forwards
+                    nos   = (vc->endpoint - vc->samplepos) / vc->freqOffset;
+                    delta = vc->freqOffset;
+                    fracMask = 0x00;
+                }
+                
+                CLAMP(nos, 1, numSamples-doneSmp);
+                
+                for (is=0; is < nos; is++) {
+                    if (vc->curdirecflg) { //backwards
+                        if (vc->samplepos < vc->looppoint) printf("SHIT! Underflow!");
+                    } else { // forwards
+                        if (vc->samplepos >= vc->endpoint) printf("SHIT! Overflow!");
+                    }
+                    tempBuf[doneSmp + is] = f_interp(vc, &pBuf);
+                    vc->samplepos += delta;
+                }
+                doneSmp += nos;
+                
+                if (vc->curdirecflg) { //backwards
+                    if (vc->samplepos < vc->looppoint) {
+                        vc->samplepos  += vc->freqOffset;
+                        vc->curdirecflg = 0;
+                    }
+                } else { // forwards
+                    if (vc->samplepos >= vc->endpoint) {
+                        if (vc->loopflg) { //has loop
+                            vc->hasLooped = 1;
+                            if(vc->bidirecflg) { //bidi
+                                vc->samplepos -= vc->freqOffset;
+                                vc->curdirecflg  = 1;
+                            } else { //straight
+                                vc->samplepos -= (vc->endpoint - vc->looppoint);
+                            }
+                        } else { //oneshot
+                            vc->samplepos = -1;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            //old branched method
+            /*
             for(is=0; is < numSamples; is++) {
                 int32_t samp;
                 
                 samp = f_interp(vc, &pBuf);
                 tempBuf[is] = samp;
                 
-                if (!doPosSamp(vc)) break;
+                if (vc->curdirecflg == 0) { //going forwards
+                    vc->samplepos += vc->freqOffset;
+                    
+                    if (vc->samplepos >= vc->endpoint) {
+                        if (vc->loopflg == 0) { //one shot
+                            vc->samplepos = -1;
+                            break;
+                        } else { // looping
+                            vc->hasLooped = 1;
+                            if(vc->bidirecflg == 0) { //straight loop
+                                vc->samplepos   -= (vc->endpoint - vc->looppoint);
+                            } else { //bidi loop
+                                vc->samplepos   -= vc->freqOffset;
+                                vc->curdirecflg  = 1;
+                            }
+                        }
+                    }
+                } else { //going backwards
+                    vc->samplepos -= vc->freqOffset;
+                    
+                    if (vc->samplepos <= vc->looppoint) {
+                        vc->samplepos  += vc->freqOffset;
+                        vc->curdirecflg = 0;
+                    }
+                }
             }
+            */
         } else { //synth render
             if (!vc->wavePtr) {
                 //original replayer plays through an empty wave
@@ -146,18 +216,15 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
             f_interp = &mixSynthCubic;
             
             for(is=0; is < numSamples; is++) {
-                int32_t samp;
-                
-                samp = f_interp(vc, &pBuf);
-                tempBuf[is] = samp;
+                tempBuf[doneSmp + is] = f_interp(vc, &pBuf);
                 
                 vc->synthPos += vc->freqOffset;
                 vc->synthPos &= vc->waveLength;
             }
+            doneSmp = numSamples;
         }
         
-        actuallyRendered = is;
-        for(is=0; is < actuallyRendered; is++) {
+        for(is=0; is < doneSmp; is++) {
             int32_t samp, off;
             
             samp = tempBuf[is];

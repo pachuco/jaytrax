@@ -1,9 +1,10 @@
 #ifndef JAYTRAX_H
 #define JAYTRAX_H
 
-#define SE_WANTEDOVERLAP (15)    //wanted declick overlap length(in samples). Will be smaller than a song tick.
-#define MIXBUF_LEN (256)         //temporary mixing buffer length
-#define MIXBUF_NR  (4)           //number of such buffers. See below enum for their types.
+#define WANTEDOVERLAP (15)    //wanted declick overlap length(in samples). Will be smaller than a song tick.
+#define MIXBUF_LEN    (256)   //temporary mixing buffer length
+#define MIXBUF_NR     (4)     //number of such buffers. See below enum for their types.
+#define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
 enum SE_BUFTYPE {
     BUF_MAINL,
     BUF_MAINR,
@@ -179,6 +180,7 @@ struct Voice {
 	uint8_t		loopflg;
 	uint8_t		bidirecflg;
 	uint8_t		curdirecflg;
+    uint8_t     hasLooped;
 	int32_t		synthPos;
 	int32_t		samplepos;
 	int32_t		lastplaypos;
@@ -192,11 +194,15 @@ struct Voice {
 	int16_t		gainMainR;
 	int16_t		gainEchoL;
 	int16_t		gainEchoR;
+    int16_t     itpStart[MAX_TAPS*2];
+    int16_t     itpLoop [MAX_TAPS*2];
+    int16_t     itpEnd  [MAX_TAPS*2];
 	
 	VoiceEffect fx[SE_WAVES_INST];
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
+typedef struct JayPlayer JayPlayer;
 struct JayPlayer {
     Song*       m_song;
     Subsong*    m_subsong;
@@ -213,7 +219,7 @@ struct JayPlayer {
     int32_t     m_MasterVolume; // Mastervolume of the replayer (256=max - 0=min)
     int16_t     m_LeftDelayBuffer[65536];   // buffer to simulate an echo on the left stereo channel
     int16_t     m_RightDelayBuffer[65536];  // buffer to simulate an echo on the right stereo channel
-    int16_t     m_OverlapBuffer[SE_WANTEDOVERLAP*2];	// Buffer which stores overlap between waveforms to avoid clicks
+    int16_t     m_OverlapBuffer[WANTEDOVERLAP*2];	// Buffer which stores overlap between waveforms to avoid clicks
     int16_t     m_OverlapCnt;   // Used to store how much overlap we have already rendered
     uint16_t    m_DelayCnt;		// Internal counter used for delay
     int32_t     tempBuf[MIXBUF_LEN * MIXBUF_NR];
@@ -225,9 +231,6 @@ struct JayPlayer {
 };
 
 //---------------------API
-
-//this holds replayer state
-typedef struct JayPlayer JayPlayer;
 
 int   jaytrax_loadSong(JayPlayer* THIS, Song* sng);
 void  jaytrax_playSubSong(JayPlayer* THIS, int subsongnr);

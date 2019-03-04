@@ -831,6 +831,7 @@ void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int32_t no
 		vc->loopflg = ins->loopflg;
 		vc->bidirecflg = ins->bidirecflg;
 		vc->curdirecflg = 0;
+        vc->hasLooped = 0;
 
 		vc->lastplaypos = -1; // first time
 		vc->freqdel = ins->fmdelay;
@@ -1331,7 +1332,7 @@ void clearSoundBuffers(JayPlayer* THIS) {
 	int32_t i,j;
 
 	// clear delaybuffers
-    memset(THIS->m_OverlapBuffer,    0, SE_WANTEDOVERLAP*2*sizeof(int16_t));
+    memset(THIS->m_OverlapBuffer,    0, WANTEDOVERLAP*2*sizeof(int16_t));
 	memset(THIS->m_LeftDelayBuffer,  0, 65536*sizeof(int16_t));
 	memset(THIS->m_RightDelayBuffer, 0, 65536*sizeof(int16_t));
 
@@ -1373,6 +1374,10 @@ void clearSoundBuffers(JayPlayer* THIS) {
 		vc->gainMainR	= 0;
 		vc->gainEchoL	= 0;
 		vc->gainEchoR	= 0;
+        vc->hasLooped   = 0;
+        memset(&vc->itpStart, 0, MAX_TAPS*2);
+        memset(&vc->itpLoop,  0, MAX_TAPS*2);
+        memset(&vc->itpEnd,   0, MAX_TAPS*2);
 		
 		for(j=0;j<4;j++) {
             VoiceEffect* vfx = &vc->fx[j];
@@ -1578,7 +1583,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
         int16_t nos;
 		
         frameLen = (THIS->m_TimeSpd * frequency) / 44100;
-        availOvlap = MIN(SE_WANTEDOVERLAP, frameLen);
+        availOvlap = MIN(WANTEDOVERLAP, frameLen);
 		if (THIS->m_TimeCnt<nrofsamples) {
 			nos = THIS->m_TimeCnt;   //Complete block
 			THIS->m_TimeCnt = frameLen;
@@ -1649,6 +1654,13 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 					vc->gainMainR = (vc->gainMainR * volMain)>>8;
 					vc->gainEchoL = (vc->gainMainL * volEcho)>>8;
 					vc->gainEchoR = (vc->gainMainR * volEcho)>>8;
+                    
+                    //prepare interpolation zones
+                    if (vc->isSample) {
+                        //itpStart[MAX_TAPS*2];
+                        //itpLoop [MAX_TAPS*2];
+                        //itpEnd  [MAX_TAPS*2];
+                    }
 				}
 				amplification = THIS->m_subsong->amplification;
 				echodelaytime = THIS->m_subsong->delaytime;
