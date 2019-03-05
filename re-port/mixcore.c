@@ -89,7 +89,7 @@ Interpolator interps[] = {
     {ITP_LINEAR,    2, &mixSynthLinear,  &mixSampNearest},
     {ITP_QUADRATIC, 3, &mixSynthQuad,    &mixSampNearest},
     {ITP_CUBIC,     4, &mixSynthCubic,   &mixSampNearest},
-    {ITP_BLEP,     -1, NULL,             NULL} //variable amount of taps
+    {ITP_BLEP,     -1, NULL,             NULL} //BLEP needs variable amount of taps
 };
 
 //---------------------API
@@ -118,6 +118,8 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
     for (ic=0; ic < chanNr; ic++) {
         Voice* vc = &THIS->m_ChannelData[ic];
         int32_t (*f_interp) (Voice* vc, int32_t* pBuf);
+        
+        assert(THIS->m_itp->numTaps <= MAX_TAPS);
         
         doneSmp = 0;
         if (vc->isSample) { //sample render
