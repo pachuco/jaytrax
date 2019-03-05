@@ -10,41 +10,41 @@
 #define ITP_T04_SXX_F01_CUBIC(P, F)  (P[1] + 0.5 * F*(P[2] - P[0] + F*(2.0 * P[0] - 5.0 * P[1] + 4.0 * P[2] - P[3] + F * (3.0 * (P[1] - P[2]) + P[3] - P[0]))))
 //---------------------interpolators for sample
 
-int32_t mixSampNone(Voice* vc, int32_t* p) {
+static int32_t mixSampNone(Voice* vc, int32_t* p) {
     return 0;
 }
 
-int32_t mixSampNearest(Voice* vc, int32_t* p) {
+static int32_t mixSampNearest(Voice* vc, int32_t* p) {
     return vc->wavePtr[vc->samplepos>>8];
 }
 
-int32_t mixSampLinear(Voice* vc, int32_t* p) {
+static int32_t mixSampLinear(Voice* vc, int32_t* p) {
     return 0;
 }
 
-int32_t mixSampQuad(Voice* vc, int32_t* p) {
+static int32_t mixSampQuad(Voice* vc, int32_t* p) {
     return 0;
 }
 
-int32_t mixSampCubic(Voice* vc, int32_t* p) {
+static int32_t mixSampCubic(Voice* vc, int32_t* p) {
     return 0;
 }
 
 //---------------------interpolators for synth
 #define SYN_GETPT(x) vc->wavePtr[((vc->synthPos + ((x)<<8)) & vc->waveLength)>>8]
 
-int32_t mixSynthNone(Voice* vc, int32_t* p) {
+static int32_t mixSynthNone(Voice* vc, int32_t* p) {
     return 0;
 }
 
-int32_t mixSynthNearest(Voice* vc, int32_t* p) {
+static int32_t mixSynthNearest(Voice* vc, int32_t* p) {
     int32_t x;
     
     x = SYN_GETPT(0);
     return x;
 }
 
-int32_t mixSynthLinear(Voice* vc, int32_t* p) {
+static int32_t mixSynthLinear(Voice* vc, int32_t* p) {
     int32_t x;
     int32_t frac = vc->synthPos & 0xFF;
     p[0] = SYN_GETPT(0);
@@ -54,7 +54,7 @@ int32_t mixSynthLinear(Voice* vc, int32_t* p) {
     return x;
 }
 
-int32_t mixSynthQuad(Voice* vc, int32_t* p) {
+static int32_t mixSynthQuad(Voice* vc, int32_t* p) {
     int32_t x;
     int32_t frac = (vc->synthPos & 0xFF)<<7;
     p[0] = SYN_GETPT(-1);
@@ -65,7 +65,7 @@ int32_t mixSynthQuad(Voice* vc, int32_t* p) {
     return x;
 }
 
-int32_t mixSynthCubic(Voice* vc, int32_t* p) {
+static int32_t mixSynthCubic(Voice* vc, int32_t* p) {
     int32_t x;
     double frac = (double)(vc->synthPos & 0xFF)/255;
     
@@ -83,19 +83,19 @@ int32_t mixSynthCubic(Voice* vc, int32_t* p) {
 //void    (*f_getSynthTaps) (int16_t* p);
 //int32_t (*f_getInterp)    (int16_t* p);
 
-Interpolator interps[] = {
-    {ITP_NONE,      0, &mixSynthNone,    &mixSampNearest},
-    {ITP_NEAREST,   1, &mixSynthNearest, &mixSampNearest},
-    {ITP_LINEAR,    2, &mixSynthLinear,  &mixSampNearest},
-    {ITP_QUADRATIC, 3, &mixSynthQuad,    &mixSampNearest},
-    {ITP_CUBIC,     4, &mixSynthCubic,   &mixSampNearest},
-    {ITP_BLEP,     -1, NULL,             NULL} //BLEP needs variable amount of taps
+Interpolator interps[INTERP_COUNT] = {
+    {ITP_NONE,      0, &mixSynthNone,    &mixSampNone,    "None"},
+    {ITP_NEAREST,   1, &mixSynthNearest, &mixSampNearest, "Nearest"},
+    {ITP_LINEAR,    2, &mixSynthLinear,  &mixSampNearest, "Linear"},
+    {ITP_QUADRATIC, 3, &mixSynthQuad,    &mixSampNearest, "Quadratic"},
+    {ITP_CUBIC,     4, &mixSynthCubic,   &mixSampNearest, "Cubic"},
+    {ITP_BLEP,     -1, &mixSynthNearest, &mixSampNearest, "BLEP"} //BLEP needs variable amount of taps
 };
 
 //---------------------API
 
 uint8_t jaymix_setInterp(Interpolator** out, uint8_t id) {
-    for (int8_t i=0; i<sizeof(interps); i++) {
+    for (int8_t i=0; i<INTERP_COUNT; i++) {
         if (interps[i].id == id) {
             *out = &interps[i];
             return 1;

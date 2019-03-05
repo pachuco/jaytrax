@@ -7,7 +7,7 @@
 #include "ioutil.h"
 
 //extracts filename from a path. Length includes \0
-void exFnameFromPath(char* dest, char* src, int32_t max) {
+static void exFnameFromPath(char* dest, char* src, int32_t max) {
     int32_t i   = 0;
     int32_t len = strlen(src)+1;
     char* p     = src+len;
@@ -20,7 +20,7 @@ void exFnameFromPath(char* dest, char* src, int32_t max) {
 
 //---------------------JXS3457
 
-int struct_readHeader(Header* dest, size_t len, FILE* fin) {
+static int struct_readHeader(Header* dest, size_t len, FILE* fin) {
     uint32_t i;
     J3457Header t;
     
@@ -34,7 +34,7 @@ int struct_readHeader(Header* dest, size_t len, FILE* fin) {
     return ferror(fin);
 }
 
-int struct_readSubsong(Subsong* dest, size_t len, FILE* fin) {
+static int struct_readSubsong(Subsong* dest, size_t len, FILE* fin) {
     uint32_t i, j, k;
     J3457Subsong t;
     
@@ -67,7 +67,7 @@ int struct_readSubsong(Subsong* dest, size_t len, FILE* fin) {
     return ferror(fin);
 }
 
-int struct_readPat(Row* dest, size_t len, FILE* fin) {
+static int struct_readPat(Row* dest, size_t len, FILE* fin) {
     uint32_t i, j;
     J3457Row t[J3457_ROWS_PAT];
     
@@ -85,7 +85,7 @@ int struct_readPat(Row* dest, size_t len, FILE* fin) {
     return ferror(fin);
 }
 
-int struct_readInst(Inst* dest, size_t len, FILE* fin) {
+static int struct_readInst(Inst* dest, size_t len, FILE* fin) {
     uint32_t i, j;
     J3457Inst t;
     for (i=0; i < len; i++) {

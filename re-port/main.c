@@ -1,6 +1,7 @@
 #define SAMPRATE 44100
 #define MIX_BUF_SAMPLES 2048
 #define MIX_BUF_NUM 2
+#define MAX_FN 256
 
 #define WIN32_LEAN_AND_MEAN // for stripping windows.h include
 
@@ -12,10 +13,10 @@
 #include "jxs.h"
 #include "jaytrax.h"
 
+static char fileName[MAX_FN];
 static JayPlayer* jay;
-static Song* song;
 
-BOOL getKeydownVK(DWORD* out) {
+static BOOL getKeydownVK(DWORD* out) {
     DWORD iEvNum, dummy;
     INPUT_RECORD ir;
     static HANDLE hIn = NULL;
@@ -34,7 +35,7 @@ BOOL getKeydownVK(DWORD* out) {
     return FALSE;
 }
 
-void clearScreen() {
+static void clearScreen() {
    COORD coordScreen = { 0, 0 };
    DWORD cCharsWritten;
    CONSOLE_SCREEN_BUFFER_INFO csbi; 
@@ -50,42 +51,80 @@ void clearScreen() {
    SetConsoleCursorPosition(hOut, coordScreen);
 }
 
-void updateDisplay() {
-    if (!jay || !song) return;
-    clearScreen();
+//extracts filename from a path. Length includes \0
+static void exFnameFromPath(char* dest, char* src, int32_t max) {
+    int32_t i   = 0;
+    int32_t len = strlen(src)+1;
+    char* p     = src+len;
     
+    if (!len || !max) return;
+    if (max > len) max = len;
+    while (i<=max && *p!='/' && *p!='\\') {p--;i++;}
+    memcpy(dest, p+1, i+1);
 }
 
-void audioCB(int16_t* buf, int32_t numSamples, int32_t sampleRate) {
+static void updateDisplay() {
+    if (!jay || !jay->m_song) return;
+    clearScreen();
+    
+    printf("%s | %s\n", &fileName[0], &jay->m_subsong->name);
+    printf("Subsong %3d/%d\n", jay->m_CurrentSubsong+1, jay->m_song->header.nrofsongs);
+    printf("Interpolation: %s\n", &jay->m_itp->name);
+    printf("\n");
+    printf("Change subsong number with F1 and F2.\n");
+    printf("Change interpolations with F3 and F4.\n");
+    printf("Exit with ESC.\n");
+}
+
+static void audioCB(int16_t* buf, int32_t numSamples, int32_t sampleRate) {
     jaytrax_renderChunk(jay, buf, numSamples, sampleRate);
 }
 
 
 int main(int argc, char* argv[]) {
     #define FAIL(x) {printf("%s\n", (x)); return 1;}
+    Song* song;
     
     if (argc != 2) {
         printf("Usage: jaytrax.exe <module>\n");
         return (1);
     }
     
+    exFnameFromPath(&fileName[0], argv[1], MAX_FN);
     jay = jaytrax_init();
     
     if (jxsfile_loadSong(argv[1], &song)==0) {
 		if (jaytrax_loadSong(jay, song)) {
 			if (winmm_openMixer(&audioCB, SAMPRATE, MIX_BUF_SAMPLES, MIX_BUF_NUM)) {
-                
+                updateDisplay();
 				for (;;) {
                     DWORD vk;
                     
                     if (getKeydownVK(&vk)) {
+                        int subtune       = jay->m_CurrentSubsong;
+                        int subtune_total = jay->m_song->header.nrofsongs;
+                        int interp        = jay->m_itp->id;
+                        
+                        winmm_enterCrit();
                         if (vk == VK_ESCAPE) {
+                            winmm_leaveCrit();
                             break;
-                        } else if (vk == 0x4D) {
-                            printf("farts\n");
+                        } else if (vk == VK_F1) {
+                            subtune = --subtune<0 ? subtune_total-1 : subtune;
+                            jaytrax_playSubSong(jay, subtune);
+                        } else if (vk == VK_F2) {
+                            subtune = ++subtune % subtune_total;
+                            jaytrax_playSubSong(jay, subtune);
+                        } else if (vk == VK_F3) {
+                            interp = --interp<0 ? INTERP_COUNT-1 : interp;
+                            jaytrax_setInterpolation(jay, interp);
+                        } else if (vk == VK_F4) {
+                            interp = ++interp % INTERP_COUNT;
+                            jaytrax_setInterpolation(jay, interp);
                         }
+                        winmm_leaveCrit();
+                        updateDisplay();
                     }
-                    
 					SleepEx(1, 1);
 					// do other stuff
 				}

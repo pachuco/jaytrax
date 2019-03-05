@@ -15,7 +15,7 @@ uint8_t isStaticInit = 0;
 
 //void SoundEngine::DeAllocate()
 
-void handleEffects(JayPlayer* THIS, int32_t channr) {
+static void handleEffects(JayPlayer* THIS, int32_t channr) {
 	int32_t f;
 	for (f=0; f<SE_EFF_INST; f++) {
         Voice* vc; VoiceEffect* vfx; Inst* ins; Effect* fx;
@@ -691,7 +691,7 @@ void handleEffects(JayPlayer* THIS, int32_t channr) {
 	}
 }
 
-void handleInstrument(JayPlayer* THIS, int32_t channr) {
+static void handleInstrument(JayPlayer* THIS, int32_t channr) {
     Voice* vc; Inst* ins;
 	int32_t vol, freq, pan;
     
@@ -795,7 +795,7 @@ void handleInstrument(JayPlayer* THIS, int32_t channr) {
 	}
 }
 
-void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int32_t note) {
+static void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int32_t note) {
     Voice* vc; Inst* ins;
 	int32_t f;
     
@@ -860,7 +860,7 @@ void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int32_t no
 	}
 }
 
-void handleSong(JayPlayer* THIS) {
+static void handleSong(JayPlayer* THIS) {
     int16_t i;
     int32_t step;
     
@@ -956,7 +956,7 @@ void handleSong(JayPlayer* THIS) {
 	}
 }
 
-void handleScript(JayPlayer* THIS, int32_t f,int32_t s, int32_t d, int32_t p, int32_t channr) { //note, script,dstnote,param,channr
+static void handleScript(JayPlayer* THIS, int32_t f,int32_t s, int32_t d, int32_t p, int32_t channr) { //note, script,dstnote,param,channr
     Voice* vc; Inst* ins;
 	int32_t a;
     
@@ -1273,7 +1273,7 @@ void handleScript(JayPlayer* THIS, int32_t f,int32_t s, int32_t d, int32_t p, in
 	}
 }
 
-void handlePattern(JayPlayer* THIS, int32_t channr) {
+static void handlePattern(JayPlayer* THIS, int32_t channr) {
     Voice* vc; Row* row;
 	int32_t pat,off;
 	int32_t f,d,s,p;
@@ -1306,7 +1306,7 @@ void handlePattern(JayPlayer* THIS, int32_t channr) {
 	handleScript(THIS, f, s, d, p, channr);
 }
 
-void advanceSong(JayPlayer* THIS) {
+static void advanceSong(JayPlayer* THIS) {
     int i;
     
 	handleSong(THIS);
@@ -1319,7 +1319,7 @@ void advanceSong(JayPlayer* THIS) {
 	}
 }
 
-void PlayPattern(JayPlayer* THIS, int PatternNr) {
+static void PlayPattern(JayPlayer* THIS, int PatternNr) {
 	THIS->m_PlayFlg = 1;
 	THIS->m_CurrentPattern = PatternNr;
 	THIS->m_PatternOffset = 63;
@@ -1328,7 +1328,7 @@ void PlayPattern(JayPlayer* THIS, int PatternNr) {
 	THIS->m_PlaySpeed = THIS->m_song->subsongs[0]->songspd - THIS->m_song->subsongs[0]->groove;
 }
 
-void clearSoundBuffers(JayPlayer* THIS) {
+static void clearSoundBuffers(JayPlayer* THIS) {
 	int32_t i,j;
 
 	// clear delaybuffers
@@ -1537,6 +1537,10 @@ JayPlayer* jaytrax_init() {
 	clearSoundBuffers(THIS);
 	THIS->m_DelayCnt=0;
     return THIS;
+}
+
+void jaytrax_setInterpolation(JayPlayer* THIS, uint8_t id) {
+    jaymix_setInterp(&THIS->m_itp, id);
 }
 
 typedef struct TempVars TempVars;

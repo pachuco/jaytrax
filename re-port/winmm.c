@@ -23,6 +23,7 @@ static int sampleRate;
 static int bufferLength;
 static int bufferNum;
 
+//might want to refine these
 #define SYNC_CRIT_INIT(x) x=0
 #define SYNC_CRIT_ENTER(x) while(x) {SleepEx(1,1);} x=1
 #define SYNC_CRIT_LEAVE(x) x=0
@@ -31,7 +32,7 @@ static int bufferNum;
 #define SYNC_SEM_RELEASE(x) if (x > 0) x--
 
 
-DWORD WINAPI mixThread(LPVOID lpParam) {
+static DWORD WINAPI mixThread(LPVOID lpParam) {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
     while(isAudioRunning) {
         SYNC_CRIT_ENTER(critDothings);
@@ -51,7 +52,7 @@ static void CALLBACK waveProc(HWAVEOUT hWaveOut, UINT uMsg, DWORD_PTR dwInstance
     if (uMsg == WOM_DONE) SYNC_SEM_RELEASE(semAudio);
 }
 
-void winmm_closeMixer(void) {
+void winmm_closeMixer() {
     int i;
     
     isAudioRunning = FALSE;
@@ -76,6 +77,14 @@ void winmm_closeMixer(void) {
     callBack = NULL;
     hWaveOut = NULL;
     bufCnt = 0;
+}
+
+void winmm_enterCrit() {
+    SYNC_CRIT_ENTER(critDothings);
+}
+
+void winmm_leaveCrit() {
+    SYNC_CRIT_LEAVE(critDothings);
 }
 
 BOOL winmm_openMixer(WinmmCallBack cb, int freq, int buflen, int bufnum) {

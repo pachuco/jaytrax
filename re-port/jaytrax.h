@@ -6,13 +6,14 @@
 #define MIXBUF_NR     (4)     //number of such buffers. See below enum for their types.
 #define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
 
-enum INTERPOLATORS {
+enum INTERP_LIST {
     ITP_NONE,
     ITP_NEAREST,
     ITP_LINEAR,
     ITP_QUADRATIC,
     ITP_CUBIC,
-    ITP_BLEP
+    ITP_BLEP,
+    INTERP_COUNT
 };
 
 enum SE_BUFTYPE {
@@ -218,6 +219,7 @@ struct Interpolator {
     int16_t numTaps;
     int32_t (*f_itpSynth) (int16_t* p);
     int32_t (*f_itpSamp)  (int16_t* p);
+    char    name[32];
 };
 
 typedef struct JayPlayer JayPlayer;
@@ -256,6 +258,7 @@ void  jaytrax_playSubSong(JayPlayer* THIS, int subsongnr);
 void  jaytrax_stopSong(JayPlayer* THIS);
 void  jaytrax_pauseSong(JayPlayer* THIS);
 void  jaytrax_continueSong(JayPlayer* THIS);
+void  jaytrax_setInterpolation(JayPlayer* THIS, uint8_t id);
 JayPlayer* jaytrax_init();
 void  jaytrax_renderChunk(JayPlayer* THIS, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
 #endif
