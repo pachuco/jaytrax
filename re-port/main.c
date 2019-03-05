@@ -1,116 +1,68 @@
 #define SAMPRATE 44100
-#define MIX_BUF_SAMPLES 4096
+#define MIX_BUF_SAMPLES 2048
 #define MIX_BUF_NUM 2
 
 #define WIN32_LEAN_AND_MEAN // for stripping windows.h include
 
+#include <windows.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <conio.h>
-
-#include <windows.h> // for mixer stream
-#include <mmsystem.h> // for mixer stream
 
 #include "jxs.h"
 #include "jaytrax.h"
 
-static volatile char isAudioRunning;
-static HANDLE hThread;
-static HWAVEOUT hWaveOut; // Device handle
-static WAVEFORMATEX wfx;
-static int16_t *mixBuffer[MIX_BUF_NUM];
-static WAVEHDR header[MIX_BUF_NUM];
-static int currBuf;
-
 static JayPlayer* jay;
+static Song* song;
 
-DWORD WINAPI mixThread(LPVOID lpParam) {
-    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
-    while(isAudioRunning) {
-        while (header[currBuf].dwFlags & WHDR_DONE) {
-			//move this into main thread somehow
-            jaytrax_renderChunk(jay, mixBuffer[currBuf], MIX_BUF_SAMPLES, SAMPRATE);
-            
-            waveOutPrepareHeader(hWaveOut, &header[currBuf], sizeof(WAVEHDR));
-            waveOutWrite(hWaveOut, &header[currBuf], sizeof(WAVEHDR));
-            currBuf = (currBuf + 1) % MIX_BUF_NUM;
+BOOL getKeydownVK(DWORD* out) {
+    DWORD iEvNum, dummy;
+    INPUT_RECORD ir;
+    static HANDLE hIn = NULL;
+    
+    if (!hIn) hIn = GetStdHandle(STD_INPUT_HANDLE);
+    
+    GetNumberOfConsoleInputEvents(hIn, &iEvNum);
+    while (iEvNum) {
+        ReadConsoleInput(hIn, &ir, 1, &dummy);
+        if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
+            if (out) *out = ir.Event.KeyEvent.wVirtualKeyCode;
+            return TRUE;
         }
-        SleepEx(1, 1);
+        iEvNum--;
     }
-    return (0);
+    return FALSE;
 }
 
-void closeMixer(void) {
-    int i;
-    
-    isAudioRunning = FALSE;
-    if (hThread) {
-        WaitForSingleObject(hThread, INFINITE);
-        CloseHandle(hThread);
-        hThread = NULL;
-    }
-    if (hWaveOut) {
-        waveOutReset(hWaveOut);
-        for (i = 0; i < MIX_BUF_NUM; ++i) {
-            if (header[i].dwUser != 0xFFFF) waveOutUnprepareHeader(hWaveOut, &header[i], sizeof (WAVEHDR));
-        }
-        waveOutClose(hWaveOut);
-        for (i = 0; i < MIX_BUF_NUM; ++i) {
-            if (mixBuffer[i] != NULL) {
-                free(mixBuffer[i]);
-                mixBuffer[i] = NULL;
-            }
-        }
-    }
-    hWaveOut = NULL;
-    currBuf = 0;
+void clearScreen() {
+   COORD coordScreen = { 0, 0 };
+   DWORD cCharsWritten;
+   CONSOLE_SCREEN_BUFFER_INFO csbi; 
+   DWORD dwConSize;
+   static HANDLE hOut = NULL;
+   
+   if (!hOut) hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+   if (!GetConsoleScreenBufferInfo(hOut, &csbi)) return;
+   dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
+   if (!FillConsoleOutputCharacter(hOut, (TCHAR) ' ', dwConSize, coordScreen, &cCharsWritten)) return;
+   if (!GetConsoleScreenBufferInfo(hOut, &csbi)) return;
+   if (!FillConsoleOutputAttribute(hOut, csbi.wAttributes, dwConSize, coordScreen, &cCharsWritten)) return;
+   SetConsoleCursorPosition(hOut, coordScreen);
 }
 
-BOOL openMixer(uint32_t outputFreq) {
-    int i;
-    DWORD threadID;
-
-    for (i = 0; i < MIX_BUF_NUM; ++i) header[i].dwUser = 0xFFFF;
-    closeMixer();
-
-    wfx.nSamplesPerSec = outputFreq;
-    wfx.wBitsPerSample = 16;
-    wfx.nChannels = 2;
-
-    wfx.cbSize = 0;
-    wfx.wFormatTag = WAVE_FORMAT_PCM;
-    wfx.nBlockAlign = (wfx.wBitsPerSample * wfx.nChannels) / 8;
-    wfx.nAvgBytesPerSec = wfx.nBlockAlign * wfx.nSamplesPerSec;
-
-    if(waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR) {
-        return FALSE;
-    }
-
-    for (i = 0; i < MIX_BUF_NUM; i++) {
-        mixBuffer[i] = (int16_t *)(calloc(MIX_BUF_SAMPLES, wfx.nBlockAlign));
-        if (mixBuffer[i] == NULL) goto onError;
-        
-        memset(&header[i], 0, sizeof(WAVEHDR));
-        header[i].dwBufferLength = wfx.nBlockAlign * MIX_BUF_SAMPLES;
-        header[i].lpData = (LPSTR) mixBuffer[i];
-        waveOutPrepareHeader(hWaveOut, &header[i], sizeof(WAVEHDR));
-        waveOutWrite(hWaveOut, &header[i], sizeof(WAVEHDR));
-    }
-    isAudioRunning = TRUE;
-    hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)(mixThread), NULL, 0, &threadID);
-    if (!hThread) return FALSE;
+void updateDisplay() {
+    if (!jay || !song) return;
+    clearScreen();
     
-    return TRUE;
-    
-    onError:
-        closeMixer();
-        return FALSE;
 }
+
+void audioCB(int16_t* buf, int32_t numSamples, int32_t sampleRate) {
+    jaytrax_renderChunk(jay, buf, numSamples, sampleRate);
+}
+
 
 int main(int argc, char* argv[]) {
     #define FAIL(x) {printf("%s\n", (x)); return 1;}
-    Song* song = NULL;
     
     if (argc != 2) {
         printf("Usage: jaytrax.exe <module>\n");
@@ -121,14 +73,23 @@ int main(int argc, char* argv[]) {
     
     if (jxsfile_loadSong(argv[1], &song)==0) {
 		if (jaytrax_loadSong(jay, song)) {
-			if (openMixer(SAMPRATE)) {
-				printf("Press any key to stop.\n");
+			if (winmm_openMixer(&audioCB, SAMPRATE, MIX_BUF_SAMPLES, MIX_BUF_NUM)) {
+                
 				for (;;) {
-					if (kbhit()) break;
+                    DWORD vk;
+                    
+                    if (getKeydownVK(&vk)) {
+                        if (vk == VK_ESCAPE) {
+                            break;
+                        } else if (vk == 0x4D) {
+                            printf("farts\n");
+                        }
+                    }
+                    
 					SleepEx(1, 1);
 					// do other stuff
 				}
-				closeMixer();
+				winmm_closeMixer();
 			} else FAIL("Cannot open mixer.");
 		} else FAIL("Invalid song.")
     } else FAIL("Cannot load file.");
