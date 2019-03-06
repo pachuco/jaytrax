@@ -1,5 +1,5 @@
-#ifndef WINMM_H
-#define WINMM_H
+#ifndef WINMMOUT_H
+#define WINMMOUT_H
 
 #include <windows.h>
 #include <stdint.h>

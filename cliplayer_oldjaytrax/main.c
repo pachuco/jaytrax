@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "winmm.h"
+#include "winmmout.h"
 #include "jxs.h"
 #include "jaytrax.h"
 
@@ -125,14 +125,14 @@ int main(int argc, char* argv[]) {
                             subtune = --subtune<0 ? subtune_total-1 : subtune;
                             jaytrax_playSubSong(jay, subtune);
                         } else if (vk == VK_F2) {
-                            subtune = ++subtune % subtune_total;
+                            subtune = (subtune+1) % subtune_total;
                             jaytrax_playSubSong(jay, subtune);
                             isPlaying = 1;
                         } else if (vk == VK_F3) {
                             interp = --interp<0 ? INTERP_COUNT-1 : interp;
                             jaytrax_setInterpolation(jay, interp);
                         } else if (vk == VK_F4) {
-                            interp = ++interp % INTERP_COUNT;
+                            interp = (interp+1) % INTERP_COUNT;
                             jaytrax_setInterpolation(jay, interp);
                         } else if (vk == VK_SPACE) {
                             if (isPlaying) jaytrax_pauseSong(jay);

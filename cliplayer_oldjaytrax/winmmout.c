@@ -6,7 +6,7 @@
 #include <windows.h>  // for mixer stream
 #include <mmsystem.h> // for mixer stream
 
-#include "winmm.h"
+#include "winmmout.h"
 
 static char isAudioRunning;
 static HANDLE hThread, hAudioSem;
@@ -31,10 +31,15 @@ static DWORD WINAPI mixThread(LPVOID lpParam) {
         WaitForSingleObject(hAudioSem, INFINITE);
     }
     return (0);
+    (void)lpParam;
 }
 
 static void CALLBACK waveProc(HWAVEOUT hWaveOut, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
     if (uMsg == WOM_DONE) ReleaseSemaphore(hAudioSem, 1, NULL);
+    (void)hWaveOut;
+    (void)dwInstance;
+    (void)dwParam1;
+    (void)dwParam2;
 }
 
 void winmm_enterCrit() {
