@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include <windows.h> // for mixer stream
 #include <mmsystem.h> // for mixer stream
@@ -9,10 +10,10 @@
 
 //static guarantees clean initial state
 #define MAXBUF 8
-static WinmmCallBack callBack;
-static DWORD semAudio, critDothings;
 static char isAudioRunning;
 static HANDLE hThread, hAudioSem;
+static CRITICAL_SECTION critDothings;
+static WinmmCallBack callBack;
 static HWAVEOUT hWaveOut;
 static WAVEFORMATEX wfx;
 static int16_t *mixBuffer[MAXBUF];
@@ -23,33 +24,32 @@ static int sampleRate;
 static int bufferLength;
 static int bufferNum;
 
-//might want to refine these
-#define SYNC_CRIT_INIT(x) x=0
-#define SYNC_CRIT_ENTER(x) while(x) {SleepEx(1,1);} x=1
-#define SYNC_CRIT_LEAVE(x) x=0
-#define SYNC_SEM_INIT(x, initVal) x=initVal
-#define SYNC_SEM_WAIT(x, max) while(x>=max) {SleepEx(1,1);} if(x < max) x++
-#define SYNC_SEM_RELEASE(x) if (x > 0) x--
-
-
 static DWORD WINAPI mixThread(LPVOID lpParam) {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
     while(isAudioRunning) {
-        SYNC_CRIT_ENTER(critDothings);
-        callBack(mixBuffer[bufCnt], bufferLength, sampleRate);
-        SYNC_CRIT_LEAVE(critDothings);
-        
-        waveOutPrepareHeader(hWaveOut, &header[bufCnt], sizeof(WAVEHDR));
-        waveOutWrite(hWaveOut, &header[bufCnt], sizeof(WAVEHDR));
-        bufCnt = (bufCnt + 1) % bufferNum;
-        
-        SYNC_SEM_WAIT(semAudio, bufferNum);
+        if(TryEnterCriticalSection(&critDothings)) {
+            callBack(mixBuffer[bufCnt], bufferLength, sampleRate);
+            LeaveCriticalSection(&critDothings);
+            
+            waveOutPrepareHeader(hWaveOut, &header[bufCnt], sizeof(WAVEHDR));
+            waveOutWrite(hWaveOut, &header[bufCnt], sizeof(WAVEHDR));
+            bufCnt = (bufCnt + 1) % bufferNum;
+        }
+        WaitForSingleObject(hAudioSem, INFINITE);
     }
     return (0);
 }
 
 static void CALLBACK waveProc(HWAVEOUT hWaveOut, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
-    if (uMsg == WOM_DONE) SYNC_SEM_RELEASE(semAudio);
+    if (uMsg == WOM_DONE) ReleaseSemaphore(hAudioSem, 1, NULL);
+}
+
+void winmm_enterCrit() {
+    EnterCriticalSection(&critDothings);
+}
+
+void winmm_leaveCrit() {
+    LeaveCriticalSection(&critDothings);
 }
 
 void winmm_closeMixer() {
@@ -57,10 +57,16 @@ void winmm_closeMixer() {
     
     isAudioRunning = FALSE;
     if (hThread) {
+        ReleaseSemaphore(hAudioSem, 1, NULL);
         WaitForSingleObject(hThread, INFINITE);
         CloseHandle(hThread);
         hThread = NULL;
     }
+    if (hAudioSem) {
+        CloseHandle(hAudioSem);
+        hAudioSem = NULL;
+    }
+    DeleteCriticalSection(&critDothings);
     if (hWaveOut) {
         waveOutReset(hWaveOut);
         for (i = 0; i < bufferNum; ++i) {
@@ -79,14 +85,6 @@ void winmm_closeMixer() {
     bufCnt = 0;
 }
 
-void winmm_enterCrit() {
-    SYNC_CRIT_ENTER(critDothings);
-}
-
-void winmm_leaveCrit() {
-    SYNC_CRIT_LEAVE(critDothings);
-}
-
 BOOL winmm_openMixer(WinmmCallBack cb, int freq, int buflen, int bufnum) {
     int i;
     DWORD threadID;
@@ -95,6 +93,7 @@ BOOL winmm_openMixer(WinmmCallBack cb, int freq, int buflen, int bufnum) {
     for (i = 0; i < bufferNum; ++i) header[i].dwUser = 0xFFFF;
     winmm_closeMixer();
     
+    assert(bufnum <= MAXBUF);
 	callBack = cb;
     sampleRate = freq;
     bufferLength = buflen;
@@ -110,12 +109,12 @@ BOOL winmm_openMixer(WinmmCallBack cb, int freq, int buflen, int bufnum) {
     wfx.nAvgBytesPerSec = wfx.nBlockAlign * wfx.nSamplesPerSec;
 
     if(waveOutOpen(&hWaveOut, WAVE_MAPPER, &wfx, (DWORD_PTR)(&waveProc), 0, CALLBACK_FUNCTION) != MMSYSERR_NOERROR) {
-        goto onError;
+        goto _ERR;
     }
     
     for (i = 0; i < bufferNum; i++) {
         mixBuffer[i] = (int16_t *)(calloc(bufferLength, wfx.nBlockAlign));
-        if (mixBuffer[i] == NULL) goto onError;
+        if (mixBuffer[i] == NULL) goto _ERR;
         
         memset(&header[i], 0, sizeof(WAVEHDR));
         header[i].dwBufferLength = wfx.nBlockAlign * bufferLength;
@@ -125,14 +124,15 @@ BOOL winmm_openMixer(WinmmCallBack cb, int freq, int buflen, int bufnum) {
     }
     
     isAudioRunning = TRUE;
-    SYNC_SEM_INIT(semAudio, bufferNum-1);
-    SYNC_CRIT_INIT(critDothings);
+    hAudioSem = CreateSemaphore(NULL, bufferNum - 1, bufferNum, NULL);
+    if (!hAudioSem) goto _ERR;
+    InitializeCriticalSection(&critDothings);
     hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)(mixThread), NULL, 0, &threadID);
-    if (!hThread)   goto onError;
+    if (!hThread) goto _ERR;
     
     return TRUE;
     
-    onError:
+    _ERR:
         winmm_closeMixer();
         return FALSE;
 }

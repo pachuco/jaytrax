@@ -10,11 +10,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "winmm.h"
 #include "jxs.h"
 #include "jaytrax.h"
 
 static char fileName[MAX_FN];
 static JayPlayer* jay;
+static char isPlaying;
 
 static BOOL getKeydownVK(DWORD* out) {
     DWORD iEvNum, dummy;
@@ -32,6 +34,10 @@ static BOOL getKeydownVK(DWORD* out) {
         }
     }
     return FALSE;
+}
+
+static void pressAnyKey() {
+    while (!getKeydownVK(NULL)) SleepEx(1,1);
 }
 
 static void clearScreen() {
@@ -61,6 +67,7 @@ static void updateDisplay() {
     printf("\n");
     printf("Change subsong number with F1 and F2.\n");
     printf("Change interpolations with F3 and F4.\n");
+    printf("Pause and resume playback with space.\n");
     printf("Exit with ESC.\n");
 }
 
@@ -76,12 +83,12 @@ static void exFnameFromPath(char* dest, char* src, int max) {
     
     if (!len || !max) return;
     if (max > len) max = len;
-    while (i<max && *p!='/' && *p!='\\') {;p--;i++;}
+    while (i<max && *p!='\\') {;p--;i++;}
     memcpy(dest, p+1, i);
 }
 
 int main(int argc, char* argv[]) {
-    #define FAIL(x) {printf("%s\n", (x)); return 1;}
+    #define FAIL(x) {printf("%s\n", (x)); goto _ERR;}
     Song* song;
     
     memset(&fileName[0], 34, MAX_FN);
@@ -98,6 +105,7 @@ int main(int argc, char* argv[]) {
 		if (jaytrax_loadSong(jay, song)) {
 			if (winmm_openMixer(&audioCB, SAMPRATE, MIX_BUF_SAMPLES, MIX_BUF_NUM)) {
                 updateDisplay();
+                isPlaying = 1;
 				for (;;) {
                     DWORD vk;
                     
@@ -109,6 +117,7 @@ int main(int argc, char* argv[]) {
                         winmm_enterCrit();
                         if (vk == VK_ESCAPE) {
                             winmm_leaveCrit();
+                            winmm_closeMixer();
                             break;
                         } else if (vk == VK_F1) {
                             subtune = --subtune<0 ? subtune_total-1 : subtune;
@@ -116,24 +125,31 @@ int main(int argc, char* argv[]) {
                         } else if (vk == VK_F2) {
                             subtune = ++subtune % subtune_total;
                             jaytrax_playSubSong(jay, subtune);
+                            isPlaying = 1;
                         } else if (vk == VK_F3) {
                             interp = --interp<0 ? INTERP_COUNT-1 : interp;
                             jaytrax_setInterpolation(jay, interp);
                         } else if (vk == VK_F4) {
                             interp = ++interp % INTERP_COUNT;
                             jaytrax_setInterpolation(jay, interp);
+                        } else if (vk == VK_SPACE) {
+                            if (isPlaying) jaytrax_pauseSong(jay);
+                            else jaytrax_continueSong(jay);
+                            isPlaying = !isPlaying;
                         }
                         winmm_leaveCrit();
                         updateDisplay();
                     }
-					SleepEx(1, 1);
+					SleepEx(1, 0);
 					// do other stuff
 				}
-				winmm_closeMixer();
 			} else FAIL("Cannot open mixer.");
 		} else FAIL("Invalid song.")
     } else FAIL("Cannot load file.");
     
     return 0;
+    _ERR:
+        pressAnyKey();
+        return 1;
     #undef FAIL
 }
