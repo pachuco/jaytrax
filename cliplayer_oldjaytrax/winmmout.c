@@ -88,7 +88,6 @@ void winmm_closeMixer() {
 BOOL winmm_openMixer(WinmmFormat* wf, WinmmCallBack* cb) {
     int i;
     DWORD threadID;
-    LONG test;
     
     if (isAudioRunning) return FALSE;
     winmm_closeMixer();

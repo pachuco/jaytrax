@@ -1560,6 +1560,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 	// we calc nrofsamples samples in blocks of 'm_TimeCnt' big (de songspd)
 	
 	r = 0;
+    echodelaytime = amplification = 0;
 	while (nrofsamples > 0) {
         int32_t availOvlap, frameLen;
         int16_t nos;

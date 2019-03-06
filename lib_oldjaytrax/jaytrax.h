@@ -217,8 +217,8 @@ typedef struct Interpolator Interpolator;
 struct Interpolator {
     uint8_t id;
     int16_t numTaps;
-    int32_t (*f_itpSynth) (int16_t* p);
-    int32_t (*f_itpSamp)  (int16_t* p);
+    int32_t (*f_itpSynth) (Voice* vc, int32_t* p);
+    int32_t (*f_itpSamp)  (Voice* vc, int32_t* p);
     char    name[32];
 };
 

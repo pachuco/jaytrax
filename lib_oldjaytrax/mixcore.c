@@ -11,30 +11,30 @@
 //---------------------interpolators for sample
 
 static int32_t mixSampNone(Voice* vc, int32_t* p) {
-    return 0;
+    return 0;(void)vc;(void)p;
 }
 
 static int32_t mixSampNearest(Voice* vc, int32_t* p) {
-    return vc->wavePtr[vc->samplepos>>8];
+    return vc->wavePtr[vc->samplepos>>8];(void)p;
 }
 
 static int32_t mixSampLinear(Voice* vc, int32_t* p) {
-    return 0;
+    return 0;(void)vc;(void)p;
 }
 
 static int32_t mixSampQuad(Voice* vc, int32_t* p) {
-    return 0;
+    return 0;(void)vc;(void)p;
 }
 
 static int32_t mixSampCubic(Voice* vc, int32_t* p) {
-    return 0;
+    return 0;(void)vc;(void)p;
 }
 
 //---------------------interpolators for synth
 #define SYN_GETPT(x) vc->wavePtr[((vc->synthPos + ((x)<<8)) & vc->waveLength)>>8]
 
 static int32_t mixSynthNone(Voice* vc, int32_t* p) {
-    return 0;
+    return 0;(void)vc;(void)p;
 }
 
 static int32_t mixSynthNearest(Voice* vc, int32_t* p) {
@@ -42,6 +42,7 @@ static int32_t mixSynthNearest(Voice* vc, int32_t* p) {
     
     x = SYN_GETPT(0);
     return x;
+    (void)p;
 }
 
 static int32_t mixSynthLinear(Voice* vc, int32_t* p) {
@@ -149,15 +150,15 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
                 
                 //loop unroll optimization
                 if (nos&1) {
-                    tempBuf[doneSmp] = f_interp(vc, &pBuf);
+                    tempBuf[doneSmp] = f_interp(vc, &pBuf[0]);
                     vc->samplepos += delta;
                     doneSmp++;
                 }
                 nos >>= 1;
                 for (is=0; is < nos; is++) {
-                    tempBuf[doneSmp + (is << 1) + 0] = f_interp(vc, &pBuf);
+                    tempBuf[doneSmp + (is << 1) + 0] = f_interp(vc, &pBuf[0]);
                     vc->samplepos += delta;
-                    tempBuf[doneSmp + (is << 1) + 1] = f_interp(vc, &pBuf);
+                    tempBuf[doneSmp + (is << 1) + 1] = f_interp(vc, &pBuf[0]);
                     vc->samplepos += delta;
                 }
                 doneSmp += nos << 1;
@@ -198,17 +199,17 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
             //loop unroll optimization
             nos = numSamples;
             if (nos&1) {
-                tempBuf[doneSmp] = f_interp(vc, &pBuf);
+                tempBuf[doneSmp] = f_interp(vc, &pBuf[0]);
                 vc->synthPos += vc->freqOffset;
                 vc->synthPos &= vc->waveLength;
                 doneSmp++;
             }
             nos >>= 1;
             for(is=0; is < nos; is++) {
-                tempBuf[doneSmp + (is << 1) + 0] = f_interp(vc, &pBuf);
+                tempBuf[doneSmp + (is << 1) + 0] = f_interp(vc, &pBuf[0]);
                 vc->synthPos += vc->freqOffset;
                 vc->synthPos &= vc->waveLength;
-                tempBuf[doneSmp + (is << 1) + 1] = f_interp(vc, &pBuf);
+                tempBuf[doneSmp + (is << 1) + 1] = f_interp(vc, &pBuf[0]);
                 vc->synthPos += vc->freqOffset;
                 vc->synthPos &= vc->waveLength;
             }
