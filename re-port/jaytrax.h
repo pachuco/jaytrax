@@ -12,7 +12,7 @@ enum INTERP_LIST {
     ITP_LINEAR,
     ITP_QUADRATIC,
     ITP_CUBIC,
-    ITP_BLEP,
+    //ITP_BLEP,
     INTERP_COUNT
 };
 

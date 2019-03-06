@@ -6,18 +6,6 @@
 #include "jxs.h"
 #include "ioutil.h"
 
-//extracts filename from a path. Length includes \0
-static void exFnameFromPath(char* dest, char* src, int32_t max) {
-    int32_t i   = 0;
-    int32_t len = strlen(src)+1;
-    char* p     = src+len;
-    
-    if (!len || !max) return;
-    if (max > len) max = len;
-    while (i<=max && *p!='/' && *p!='\\') {p--;i++;}
-    memcpy(dest, p+1, i+1);
-}
-
 //---------------------JXS3457
 
 static int struct_readHeader(Header* dest, size_t len, FILE* fin) {

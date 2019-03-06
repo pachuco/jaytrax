@@ -89,7 +89,7 @@ Interpolator interps[INTERP_COUNT] = {
     {ITP_LINEAR,    2, &mixSynthLinear,  &mixSampNearest, "Linear"},
     {ITP_QUADRATIC, 3, &mixSynthQuad,    &mixSampNearest, "Quadratic"},
     {ITP_CUBIC,     4, &mixSynthCubic,   &mixSampNearest, "Cubic"},
-    {ITP_BLEP,     -1, &mixSynthNearest, &mixSampNearest, "BLEP"} //BLEP needs variable amount of taps
+    //{ITP_BLEP,     -1, &mixSynthNearest, &mixSampNearest, "BLEP"} //BLEP needs variable amount of taps
 };
 
 //---------------------API

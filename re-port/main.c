@@ -24,13 +24,12 @@ static BOOL getKeydownVK(DWORD* out) {
     if (!hIn) hIn = GetStdHandle(STD_INPUT_HANDLE);
     
     GetNumberOfConsoleInputEvents(hIn, &iEvNum);
-    while (iEvNum) {
+    while (iEvNum--) {
         ReadConsoleInput(hIn, &ir, 1, &dummy);
         if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
             if (out) *out = ir.Event.KeyEvent.wVirtualKeyCode;
             return TRUE;
         }
-        iEvNum--;
     }
     return FALSE;
 }
@@ -51,25 +50,14 @@ static void clearScreen() {
    SetConsoleCursorPosition(hOut, coordScreen);
 }
 
-//extracts filename from a path. Length includes \0
-static void exFnameFromPath(char* dest, char* src, int32_t max) {
-    int32_t i   = 0;
-    int32_t len = strlen(src)+1;
-    char* p     = src+len;
-    
-    if (!len || !max) return;
-    if (max > len) max = len;
-    while (i<=max && *p!='/' && *p!='\\') {p--;i++;}
-    memcpy(dest, p+1, i+1);
-}
-
 static void updateDisplay() {
     if (!jay || !jay->m_song) return;
     clearScreen();
     
-    printf("%s | %s\n", &fileName[0], &jay->m_subsong->name);
-    printf("Subsong %3d/%d\n", jay->m_CurrentSubsong+1, jay->m_song->header.nrofsongs);
-    printf("Interpolation: %s\n", &jay->m_itp->name);
+    printf("Filename:  %s\n", &fileName[0]);
+    printf("Songtitle: %s\n", &jay->m_subsong->name);
+    printf("Subsong:   %02d/%02d\n", jay->m_CurrentSubsong+1, jay->m_song->header.nrofsongs);
+    printf("Interpol.: %s\n", &jay->m_itp->name);
     printf("\n");
     printf("Change subsong number with F1 and F2.\n");
     printf("Change interpolations with F3 and F4.\n");
@@ -80,10 +68,23 @@ static void audioCB(int16_t* buf, int32_t numSamples, int32_t sampleRate) {
     jaytrax_renderChunk(jay, buf, numSamples, sampleRate);
 }
 
+//extracts filename from a path. Length includes \0
+static void exFnameFromPath(char* dest, char* src, int max) {
+    int i   = 0;
+    int len = strlen(src);
+    char* p = src+len;
+    
+    if (!len || !max) return;
+    if (max > len) max = len;
+    while (i<max && *p!='/' && *p!='\\') {;p--;i++;}
+    memcpy(dest, p+1, i);
+}
 
 int main(int argc, char* argv[]) {
     #define FAIL(x) {printf("%s\n", (x)); return 1;}
     Song* song;
+    
+    memset(&fileName[0], 34, MAX_FN);
     
     if (argc != 2) {
         printf("Usage: jaytrax.exe <module>\n");
