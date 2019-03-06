@@ -4,11 +4,20 @@
 #include <windows.h>
 #include <stdint.h>
 
-typedef void (*WinmmCallBack)(int16_t* buf, int numSamples, int sampleRate);
+typedef void (WinmmCallBack)(LPSTR buf);
+
+typedef struct WinmmFormat WinmmFormat;
+struct WinmmFormat {
+    int sampleRate;
+    int chanNr;
+    int bits;
+    int bufLength;
+    int bufNr;
+};
 
 void winmm_enterCrit();
 void winmm_leaveCrit();
 void winmm_closeMixer();
-BOOL winmm_openMixer(WinmmCallBack cb, int freq, int buflen, int bufnum);
+BOOL winmm_openMixer(WinmmFormat* wf, WinmmCallBack* cb);
 
 #endif

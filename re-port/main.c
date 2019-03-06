@@ -14,6 +14,8 @@
 #include "jxs.h"
 #include "jaytrax.h"
 
+WinmmFormat wf = {44100, 2, 16, 512, 8};
+
 static char fileName[MAX_FN];
 static JayPlayer* jay;
 static char isPlaying;
@@ -41,7 +43,7 @@ static void pressAnyKey() {
 }
 
 static void clearScreen() {
-   COORD coordScreen = { 0, 0 };
+   COORD coordScreen = {0, 0};
    DWORD cCharsWritten;
    CONSOLE_SCREEN_BUFFER_INFO csbi; 
    DWORD dwConSize;
@@ -71,8 +73,8 @@ static void updateDisplay() {
     printf("Exit with ESC.\n");
 }
 
-static void audioCB(int16_t* buf, int32_t numSamples, int32_t sampleRate) {
-    jaytrax_renderChunk(jay, buf, numSamples, sampleRate);
+static void audioCB(LPSTR buf) {
+    jaytrax_renderChunk(jay, (int16_t*)buf, wf.bufLength, wf.sampleRate);
 }
 
 //extracts filename from a path. Length includes \0
@@ -103,7 +105,7 @@ int main(int argc, char* argv[]) {
     
     if (jxsfile_loadSong(argv[1], &song)==0) {
 		if (jaytrax_loadSong(jay, song)) {
-			if (winmm_openMixer(&audioCB, SAMPRATE, MIX_BUF_SAMPLES, MIX_BUF_NUM)) {
+			if (winmm_openMixer(&wf, &audioCB)) {
                 updateDisplay();
                 isPlaying = 1;
 				for (;;) {
