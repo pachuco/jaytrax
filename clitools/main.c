@@ -64,7 +64,7 @@ static void updateDisplay() {
     
     printf("Filename:  %s\n", &fileName[0]);
     printf("Songtitle: %s\n", &jay->m_subsong->name);
-    printf("Subsong:   %02d/%02d\n", jay->m_CurrentSubsong+1, jay->m_song->header.nrofsongs);
+    printf("Subsong:   %02d/%02d\n", jay->m_CurrentSubsong+1, jay->m_song->nrofsongs);
     printf("Interpol.: %s\n", &jay->m_itp->name);
     printf("\n");
     printf("Change subsong number with F1 and F2.\n");
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
                     
                     if (getKeydownVK(&vk)) {
                         int subtune       = jay->m_CurrentSubsong;
-                        int subtune_total = jay->m_song->header.nrofsongs;
+                        int subtune_total = jay->m_song->nrofsongs;
                         int interp        = jay->m_itp->id;
                         
                         winmm_enterCrit();

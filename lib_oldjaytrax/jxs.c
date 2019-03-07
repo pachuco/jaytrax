@@ -8,17 +8,15 @@
 
 //---------------------JXS3457
 
-static int struct_readHeader(Header* dest, size_t len, FILE* fin) {
+static int struct_readHeader(Song* dest, FILE* fin) {
     uint32_t i;
     J3457Header t;
     
-    for (i=0; i < len; i++) {
-        fread(&t, sizeof(J3457Header), 1, fin);
-        dest[i].mugiversion = t.mugiversion;
-        dest[i].nrofpats    = t.nrofpats;
-        dest[i].nrofsongs   = t.nrofsongs;
-        dest[i].nrofinst    = t.nrofinst;
-    }
+    fread(&t, sizeof(J3457Header), 1, fin);
+    dest->mugiversion = t.mugiversion;
+    dest->nrofpats    = t.nrofpats;
+    dest->nrofsongs   = t.nrofsongs;
+    dest->nrofinst    = t.nrofinst;
     return ferror(fin);
 }
 
@@ -148,14 +146,14 @@ int jxsfile_loadSong(char* path, Song** sngOut) {
     if((song = (Song*)calloc(1, sizeof(Song)))) {
         int version;
         
-        if (struct_readHeader(&song->header, 1, fin)) FAIL(ERR_BADSONG);
+        if (struct_readHeader(song, fin)) FAIL(ERR_BADSONG);
         //version magic
-        version = song->header.mugiversion;
+        version = song->mugiversion;
         if (version >= 3456 && version <= 3457) {
-            int nrSubsongs = song->header.nrofsongs;
-            int nrPats     = song->header.nrofpats;
+            int nrSubsongs = song->nrofsongs;
+            int nrPats     = song->nrofpats;
             int nrRows     = J3457_ROWS_PAT * nrPats;
-            int nrInst     = song->header.nrofinst;
+            int nrInst     = song->nrofinst;
             
             //subsongs
             if ((song->subsongs = (Subsong**)calloc(nrSubsongs, sizeof(Subsong*)))) {

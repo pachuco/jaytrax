@@ -58,14 +58,6 @@ struct Row {
 	uint8_t script;
 };
 
-typedef struct Header Header;
-struct Header {
-	int16_t		mugiversion;//version of mugician this song was saved with
-	int32_t		nrofpats;	//aantal patterns beschikbaar
-	int32_t 	nrofsongs;	//aantal beschikbare subsongs
-	int32_t 	nrofinst;	//aantal gebruikte instruments
-};
-
 typedef struct Subsong Subsong;
 struct Subsong {
 	uint8_t		mute[SE_NROFCHANS];   // which channels are muted? (1=muted)
@@ -138,7 +130,11 @@ struct Inst {
 
 typedef struct Song Song;
 struct Song {
-    Header    header;
+	int16_t		mugiversion;//version of mugician this song was saved with
+	int32_t		nrofpats;	//aantal patterns beschikbaar
+	int32_t 	nrofsongs;	//aantal beschikbare subsongs
+	int32_t 	nrofinst;	//aantal gebruikte instruments
+    
     Subsong** subsongs;
     Row*      patterns;
     char**    patNames;

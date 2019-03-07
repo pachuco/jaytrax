@@ -800,7 +800,7 @@ static void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int
 	int32_t f;
     
     // instruments init
-	if(instNum > THIS->m_song->header.nrofinst) return; // not allowed!
+	if(instNum > THIS->m_song->nrofinst) return; // not allowed!
     vc = &THIS->m_ChannelData[channr];
 	if(vc->instrument == -1 && instNum == 0) return; //geen instrument 0 op een gemute channel...er was namelijk geen previous instrument
     ins = THIS->m_song->instruments[instNum-1];
@@ -1411,7 +1411,7 @@ void jaytrax_playSubSong(JayPlayer* THIS, int subsongnr) {
 	int maat, pos, t;
 	Order* order;
 
-	if (subsongnr > THIS->m_song->header.nrofsongs) return;
+	if (subsongnr > THIS->m_song->nrofsongs) return;
 	THIS->m_CurrentSubsong = subsongnr;
 	THIS->m_subsong = THIS->m_song->subsongs[subsongnr];
 	clearSoundBuffers(THIS);
