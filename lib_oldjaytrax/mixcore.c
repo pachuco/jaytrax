@@ -10,34 +10,34 @@
 #define ITP_T04_SXX_F01_CUBIC(P, F)  (P[1] + 0.5 * F*(P[2] - P[0] + F*(2.0 * P[0] - 5.0 * P[1] + 4.0 * P[2] - P[3] + F * (3.0 * (P[1] - P[2]) + P[3] - P[0]))))
 //---------------------interpolators for sample
 
-static int32_t mixSampNone(Voice* vc, int32_t* p) {
+static int32_t mixSampNone(JT1Voice* vc, int32_t* p) {
     return 0;(void)vc;(void)p;
 }
 
-static int32_t mixSampNearest(Voice* vc, int32_t* p) {
+static int32_t mixSampNearest(JT1Voice* vc, int32_t* p) {
     return vc->wavePtr[vc->samplepos>>8];(void)p;
 }
 
-static int32_t mixSampLinear(Voice* vc, int32_t* p) {
+static int32_t mixSampLinear(JT1Voice* vc, int32_t* p) {
     return 0;(void)vc;(void)p;
 }
 
-static int32_t mixSampQuad(Voice* vc, int32_t* p) {
+static int32_t mixSampQuad(JT1Voice* vc, int32_t* p) {
     return 0;(void)vc;(void)p;
 }
 
-static int32_t mixSampCubic(Voice* vc, int32_t* p) {
+static int32_t mixSampCubic(JT1Voice* vc, int32_t* p) {
     return 0;(void)vc;(void)p;
 }
 
 //---------------------interpolators for synth
 #define SYN_GETPT(x) vc->wavePtr[((vc->synthPos + ((x)<<8)) & vc->waveLength)>>8]
 
-static int32_t mixSynthNone(Voice* vc, int32_t* p) {
+static int32_t mixSynthNone(JT1Voice* vc, int32_t* p) {
     return 0;(void)vc;(void)p;
 }
 
-static int32_t mixSynthNearest(Voice* vc, int32_t* p) {
+static int32_t mixSynthNearest(JT1Voice* vc, int32_t* p) {
     int32_t x;
     
     x = SYN_GETPT(0);
@@ -45,7 +45,7 @@ static int32_t mixSynthNearest(Voice* vc, int32_t* p) {
     (void)p;
 }
 
-static int32_t mixSynthLinear(Voice* vc, int32_t* p) {
+static int32_t mixSynthLinear(JT1Voice* vc, int32_t* p) {
     int32_t x;
     int32_t frac = vc->synthPos & 0xFF;
     p[0] = SYN_GETPT(0);
@@ -55,7 +55,7 @@ static int32_t mixSynthLinear(Voice* vc, int32_t* p) {
     return x;
 }
 
-static int32_t mixSynthQuad(Voice* vc, int32_t* p) {
+static int32_t mixSynthQuad(JT1Voice* vc, int32_t* p) {
     int32_t x;
     int32_t frac = (vc->synthPos & 0xFF)<<7;
     p[0] = SYN_GETPT(-1);
@@ -66,7 +66,7 @@ static int32_t mixSynthQuad(Voice* vc, int32_t* p) {
     return x;
 }
 
-static int32_t mixSynthCubic(Voice* vc, int32_t* p) {
+static int32_t mixSynthCubic(JT1Voice* vc, int32_t* p) {
     int32_t x;
     double frac = (double)(vc->synthPos & 0xFF)/255;
     
@@ -105,7 +105,7 @@ uint8_t jaymix_setInterp(Interpolator** out, uint8_t id) {
     return 0;
 }
 
-void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
+void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
     int32_t  tempBuf[MIXBUF_LEN];
     int16_t  ic, is, doneSmp;
     int32_t* outBuf = &THIS->tempBuf[0];
@@ -117,8 +117,8 @@ void jaymix_mixCore(JayPlayer* THIS, int16_t numSamples) {
     
     
     for (ic=0; ic < chanNr; ic++) {
-        Voice* vc = &THIS->m_ChannelData[ic];
-        int32_t (*f_interp) (Voice* vc, int32_t* pBuf);
+        JT1Voice* vc = &THIS->m_ChannelData[ic];
+        int32_t (*f_interp) (JT1Voice* vc, int32_t* pBuf);
         
         assert(THIS->m_itp->numTaps <= MAX_TAPS);
         

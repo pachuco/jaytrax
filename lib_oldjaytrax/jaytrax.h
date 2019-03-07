@@ -43,14 +43,14 @@ enum SE_PLAYMODE {
 #define SE_NROFFINETUNESTEPS (16)	// number of finetune scales
 #define SE_NROFEFFECTS (18)			// number of available wave effects
 
-typedef struct Order Order;
-struct Order {
+typedef struct JT1Order JT1Order;
+struct JT1Order {
 	int16_t	    patnr;		// welk pattern spelen...
 	int16_t	    patlen;		// 0/16/32/48
 };
 
-typedef struct Row Row;
-struct Row {
+typedef struct JT1Row JT1Row;
+struct JT1Row {
 	uint8_t	srcnote;
 	uint8_t dstnote;
 	uint8_t inst;
@@ -58,8 +58,8 @@ struct Row {
 	uint8_t script;
 };
 
-typedef struct Subsong Subsong;
-struct Subsong {
+typedef struct JT1Subsong JT1Subsong;
+struct JT1Subsong {
 	uint8_t		mute[SE_NROFCHANS];   // which channels are muted? (1=muted)
 	int32_t 	songspd;	// delay tussen de pattern-stepjes
 	int32_t 	groove;		// groove value... 0=nothing, 1 = swing, 2=shuffle
@@ -75,11 +75,11 @@ struct Subsong {
 	uint16_t    delaytime; // the delaytime (for the echo effect)
 	uint8_t     delayamount[SE_NROFCHANS]; // amount per channel for the echo-effect
 	int16_t		amplification; //extra amplification factor (20 to 1000)
-    Order       orders[SE_NROFCHANS][SE_ORDERS_SUBSONG];
+    JT1Order     orders[SE_NROFCHANS][SE_ORDERS_SUBSONG];
 };
 
-typedef struct Effect Effect;
-struct Effect {
+typedef struct JT1Effect JT1Effect;
+struct JT1Effect {
 	int32_t		dsteffect;
 	int32_t		srceffect1;
 	int32_t		srceffect2;
@@ -94,8 +94,8 @@ struct Effect {
 };
 
 // inst is the structure which has the entire instrument definition.
-typedef struct Inst Inst;
-struct Inst {
+typedef struct JT1Inst JT1Inst;
+struct JT1Inst {
 	int16_t		mugiversion;
 	char		instname[SE_NAMELEN];
 	int16_t		waveform;
@@ -114,7 +114,7 @@ struct Inst {
 	int16_t		panwave;  
 	int16_t		panspd;
 	int16_t		panlooppoint;
-	Effect		fx[SE_EFF_INST];
+	JT1Effect    fx[SE_EFF_INST];
 	char		samplename[SE_NAMELEN];
     //ugly. Move samples into their own spot
 	int16_t		sharing;	// sample sharing! sharing contains instr nr of shared sanpledata (0=no sharing)
@@ -128,27 +128,27 @@ struct Inst {
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
-typedef struct Song Song;
-struct Song {
+typedef struct JT1Song JT1Song;
+struct JT1Song {
 	int16_t		mugiversion;//version of mugician this song was saved with
 	int32_t		nrofpats;	//aantal patterns beschikbaar
 	int32_t 	nrofsongs;	//aantal beschikbare subsongs
 	int32_t 	nrofinst;	//aantal gebruikte instruments
     
-    Subsong** subsongs;
-    Row*      patterns;
-    char**    patNames;
-    Inst**    instruments;
-    uint8_t** samples;
-    int8_t    arpTable[SE_ARPS_SONG * SE_STEPS_ARP];
+    JT1Subsong** subsongs;
+    JT1Row*      patterns;
+    char**      patNames;
+    JT1Inst**    instruments;
+    uint8_t**   samples;
+    int8_t      arpTable[SE_ARPS_SONG * SE_STEPS_ARP];
     
 };
 
 //---------------------internal structs
 
 // Chanfx is an internal structure which keeps track of the current effect parameters per active channel
-typedef struct VoiceEffect VoiceEffect;
-struct VoiceEffect {
+typedef struct JT1VoiceEffect JT1VoiceEffect;
+struct JT1VoiceEffect {
 	int			fxcnt1;
 	int			fxcnt2;
 	int			osccnt;
@@ -163,8 +163,8 @@ struct VoiceEffect {
 };
 
 // chandat is an internal structure which keeps track of the current instruemnts current variables per active channel
-typedef struct Voice Voice;
-struct Voice {
+typedef struct JT1Voice JT1Voice;
+struct JT1Voice {
 	int32_t	    songpos;
 	int32_t	    patpos;
 	int32_t	    instrument;
@@ -205,7 +205,7 @@ struct Voice {
     int16_t     itpLoop [MAX_TAPS*2];
     int16_t     itpEnd  [MAX_TAPS*2];
 	
-	VoiceEffect fx[SE_WAVES_INST];
+	JT1VoiceEffect fx[SE_WAVES_INST];
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
 };
 
@@ -213,16 +213,16 @@ typedef struct Interpolator Interpolator;
 struct Interpolator {
     uint8_t id;
     int16_t numTaps;
-    int32_t (*f_itpSynth) (Voice* vc, int32_t* p);
-    int32_t (*f_itpSamp)  (Voice* vc, int32_t* p);
+    int32_t (*f_itpSynth) (JT1Voice* vc, int32_t* p);
+    int32_t (*f_itpSamp)  (JT1Voice* vc, int32_t* p);
     char    name[32];
 };
 
-typedef struct JayPlayer JayPlayer;
-struct JayPlayer {
-    Song*       m_song;
-    Subsong*    m_subsong;
-    Voice       m_ChannelData[SE_NROFCHANS];
+typedef struct JT1Player JT1Player;
+struct JT1Player {
+    JT1Song*     m_song;
+    JT1Subsong*  m_subsong;
+    JT1Voice     m_ChannelData[SE_NROFCHANS];
     int32_t     m_CurrentSubsong;
     int16_t     m_TimeCnt;      // Samplecounter which stores the njumber of samples before the next songparams are calculated (is reinited with m_TimeSpd)
     int16_t     m_TimeSpd;      // Sample accurate counter which indicates every how many samples the song should progress 1 tick. Is dependant on rendering frequency and BPM
@@ -249,12 +249,12 @@ struct JayPlayer {
 
 //---------------------API
 
-int   jaytrax_loadSong(JayPlayer* THIS, Song* sng);
-void  jaytrax_playSubSong(JayPlayer* THIS, int subsongnr);
-void  jaytrax_stopSong(JayPlayer* THIS);
-void  jaytrax_pauseSong(JayPlayer* THIS);
-void  jaytrax_continueSong(JayPlayer* THIS);
-void  jaytrax_setInterpolation(JayPlayer* THIS, uint8_t id);
-JayPlayer* jaytrax_init();
-void  jaytrax_renderChunk(JayPlayer* THIS, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
+int   jaytrax_loadSong(JT1Player* THIS, JT1Song* sng);
+void  jaytrax_playSubSong(JT1Player* THIS, int subsongnr);
+void  jaytrax_stopSong(JT1Player* THIS);
+void  jaytrax_pauseSong(JT1Player* THIS);
+void  jaytrax_continueSong(JT1Player* THIS);
+void  jaytrax_setInterpolation(JT1Player* THIS, uint8_t id);
+JT1Player* jaytrax_init();
+void  jaytrax_renderChunk(JT1Player* THIS, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
 #endif

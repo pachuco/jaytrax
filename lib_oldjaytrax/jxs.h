@@ -154,5 +154,5 @@ struct J3457Inst {
 
 //---------------------
 
-int jxsfile_loadSong(char* path, Song** sngOut);
+int jxsfile_loadSong(char* path, JT1Song** sngOut);
 #endif

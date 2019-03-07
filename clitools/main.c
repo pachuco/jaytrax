@@ -17,7 +17,7 @@
 WinmmFormat wf = {44100, 2, 16, 512, 8};
 
 static char fileName[MAX_FN];
-static JayPlayer* jay;
+static JT1Player* jay;
 static char isPlaying;
 
 static BOOL getKeydownVK(DWORD* out) {
@@ -91,7 +91,7 @@ static void exFnameFromPath(char* dest, char* src, int max) {
 
 int main(int argc, char* argv[]) {
     #define FAIL(x) {printf("%s\n", (x)); goto _ERR;}
-    Song* song;
+    JT1Song* song;
     
     memset(&fileName[0], 34, MAX_FN);
     

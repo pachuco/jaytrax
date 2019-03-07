@@ -15,10 +15,10 @@ uint8_t isStaticInit = 0;
 
 //void SoundEngine::DeAllocate()
 
-static void handleEffects(JayPlayer* THIS, int32_t channr) {
+static void handleEffects(JT1Player* THIS, int32_t channr) {
 	int32_t f;
 	for (f=0; f<SE_EFF_INST; f++) {
-        Voice* vc; VoiceEffect* vfx; Inst* ins; Effect* fx;
+        JT1Voice* vc; JT1VoiceEffect* vfx; JT1Inst* ins; JT1Effect* fx;
 		int16_t s;
         
         vc  = &THIS->m_ChannelData[channr];
@@ -691,8 +691,8 @@ static void handleEffects(JayPlayer* THIS, int32_t channr) {
 	}
 }
 
-static void handleInstrument(JayPlayer* THIS, int32_t channr) {
-    Voice* vc; Inst* ins;
+static void handleInstrument(JT1Player* THIS, int32_t channr) {
+    JT1Voice* vc; JT1Inst* ins;
 	int32_t vol, freq, pan;
     
     vc = &THIS->m_ChannelData[channr];
@@ -795,8 +795,8 @@ static void handleInstrument(JayPlayer* THIS, int32_t channr) {
 	}
 }
 
-static void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int32_t note) {
-    Voice* vc; Inst* ins;
+static void playInstrument(JT1Player* THIS, int32_t channr, int32_t instNum, int32_t note) {
+    JT1Voice* vc; JT1Inst* ins;
 	int32_t f;
     
     // instruments init
@@ -843,7 +843,7 @@ static void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int
     
     // effects init
 	for (f=0; f<SE_EFF_INST; f++) {
-        Effect* fx; VoiceEffect* vfx;
+        JT1Effect* fx; JT1VoiceEffect* vfx;
         
         fx  = &THIS->m_song->instruments[vc->instrument]->fx[f];
         vfx = &vc->fx[f];
@@ -860,7 +860,7 @@ static void playInstrument(JayPlayer* THIS, int32_t channr, int32_t instNum, int
 	}
 }
 
-static void handleSong(JayPlayer* THIS) {
+static void handleSong(JT1Player* THIS) {
     int16_t i;
     int32_t step;
     
@@ -883,7 +883,7 @@ static void handleSong(JayPlayer* THIS) {
 			THIS->m_PatternOffset %= THIS->m_PatternLength;
         } else {
             for (i=0; i < THIS->m_subsong->nrofchans; i++) {
-                Voice* vc = &THIS->m_ChannelData[i];
+                JT1Voice* vc = &THIS->m_ChannelData[i];
                 
                 vc->patpos++;
                 //the ==-1 part is that the song counter always is 1 before the start...so if the song starts at the beginning, the pos is -1
@@ -907,8 +907,8 @@ static void handleSong(JayPlayer* THIS) {
                     
                     // now me must reset all the playpointers to the loop positions
                     for (t=0; t<SE_NROFCHANS; t++) {
-                        Order* orders = THIS->m_subsong->orders[t];
-                        Voice* vc = &THIS->m_ChannelData[t];
+                        JT1Order* orders = THIS->m_subsong->orders[t];
+                        JT1Voice* vc = &THIS->m_ChannelData[t];
                         int32_t endpos;
                         int32_t lastmaat;
                         
@@ -956,8 +956,8 @@ static void handleSong(JayPlayer* THIS) {
 	}
 }
 
-static void handleScript(JayPlayer* THIS, int32_t f,int32_t s, int32_t d, int32_t p, int32_t channr) { //note, script,dstnote,param,channr
-    Voice* vc; Inst* ins;
+static void handleScript(JT1Player* THIS, int32_t f,int32_t s, int32_t d, int32_t p, int32_t channr) { //note, script,dstnote,param,channr
+    JT1Voice* vc; JT1Inst* ins;
 	int32_t a;
     
     vc = &THIS->m_ChannelData[channr];
@@ -1273,8 +1273,8 @@ static void handleScript(JayPlayer* THIS, int32_t f,int32_t s, int32_t d, int32_
 	}
 }
 
-static void handlePattern(JayPlayer* THIS, int32_t channr) {
-    Voice* vc; Row* row;
+static void handlePattern(JT1Player* THIS, int32_t channr) {
+    JT1Voice* vc; JT1Row* row;
 	int32_t pat,off;
 	int32_t f,d,s,p;
     
@@ -1306,7 +1306,7 @@ static void handlePattern(JayPlayer* THIS, int32_t channr) {
 	handleScript(THIS, f, s, d, p, channr);
 }
 
-static void advanceSong(JayPlayer* THIS) {
+static void advanceSong(JT1Player* THIS) {
     int i;
     
 	handleSong(THIS);
@@ -1319,7 +1319,7 @@ static void advanceSong(JayPlayer* THIS) {
 	}
 }
 
-static void PlayPattern(JayPlayer* THIS, int PatternNr) {
+static void PlayPattern(JT1Player* THIS, int PatternNr) {
 	THIS->m_PlayFlg = 1;
 	THIS->m_CurrentPattern = PatternNr;
 	THIS->m_PatternOffset = 63;
@@ -1328,7 +1328,7 @@ static void PlayPattern(JayPlayer* THIS, int PatternNr) {
 	THIS->m_PlaySpeed = THIS->m_song->subsongs[0]->songspd - THIS->m_song->subsongs[0]->groove;
 }
 
-static void clearSoundBuffers(JayPlayer* THIS) {
+static void clearSoundBuffers(JT1Player* THIS) {
 	int32_t i,j;
 
 	// clear delaybuffers
@@ -1338,7 +1338,7 @@ static void clearSoundBuffers(JayPlayer* THIS) {
 
 	//initialize channel data
 	for (i=0;i<SE_NROFCHANS;i++) {
-        Voice* vc = &THIS->m_ChannelData[i];
+        JT1Voice* vc = &THIS->m_ChannelData[i];
         
 		vc->songpos = 0;
 		vc->patpos = 0;
@@ -1380,7 +1380,7 @@ static void clearSoundBuffers(JayPlayer* THIS) {
         memset(&vc->itpEnd,   0, MAX_TAPS*2);
 		
 		for(j=0;j<4;j++) {
-            VoiceEffect* vfx = &vc->fx[j];
+            JT1VoiceEffect* vfx = &vc->fx[j];
             
 			vfx->fxcnt1 = 0;
 			vfx->fxcnt2 = 0;
@@ -1400,16 +1400,16 @@ static void clearSoundBuffers(JayPlayer* THIS) {
 
 //---------------------API
 
-int jaytrax_loadSong(JayPlayer* THIS, Song* sng) {
+int jaytrax_loadSong(JT1Player* THIS, JT1Song* sng) {
     THIS->m_song = sng;
     jaytrax_playSubSong(THIS, 0);
     return 1;
 }
 
 // This function ensures that the play routine is called properly and everything is initialized in a good way
-void jaytrax_playSubSong(JayPlayer* THIS, int subsongnr) {
+void jaytrax_playSubSong(JT1Player* THIS, int subsongnr) {
 	int maat, pos, t;
-	Order* order;
+	JT1Order* order;
 
 	if (subsongnr > THIS->m_song->nrofsongs) return;
 	THIS->m_CurrentSubsong = subsongnr;
@@ -1417,7 +1417,7 @@ void jaytrax_playSubSong(JayPlayer* THIS, int subsongnr) {
 	clearSoundBuffers(THIS);
 
 	for(t=0; t < SE_NROFCHANS; t++) {
-		Voice* vc;
+		JT1Voice* vc;
         int endpos, lastmaat;
         
         vc = &THIS->m_ChannelData[t];
@@ -1468,7 +1468,7 @@ void jaytrax_playSubSong(JayPlayer* THIS, int subsongnr) {
 	THIS->m_PlayStep &= 63;
 }
 
-void jaytrax_stopSong(JayPlayer* THIS) {
+void jaytrax_stopSong(JT1Player* THIS) {
 	THIS->m_PlayFlg  = 0;
 	THIS->m_PauseFlg = 0;
 	THIS->m_PlayMode = SE_PM_SONG;
@@ -1478,16 +1478,16 @@ void jaytrax_stopSong(JayPlayer* THIS) {
 	}
 }
 
-void jaytrax_pauseSong(JayPlayer* THIS) {
+void jaytrax_pauseSong(JT1Player* THIS) {
 	THIS->m_PauseFlg = 1;
 }
 
-void jaytrax_continueSong(JayPlayer* THIS) {
+void jaytrax_continueSong(JT1Player* THIS) {
 	THIS->m_PauseFlg = 0;
 }
 
-JayPlayer* jaytrax_init() {
-    JayPlayer* THIS = calloc(1, sizeof(JayPlayer));
+JT1Player* jaytrax_init() {
+    JT1Player* THIS = calloc(1, sizeof(JT1Player));
 	//lazy static init
     if (!isStaticInit) {
         int32_t i, j;
@@ -1539,7 +1539,7 @@ JayPlayer* jaytrax_init() {
     return THIS;
 }
 
-void jaytrax_setInterpolation(JayPlayer* THIS, uint8_t id) {
+void jaytrax_setInterpolation(JT1Player* THIS, uint8_t id) {
     jaymix_setInterp(&THIS->m_itp, id);
 }
 
@@ -1551,7 +1551,7 @@ struct TempVars {
 };
 
 //backup
-void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, int32_t frequency) {
+void jaytrax_renderChunk(JT1Player* THIS, int16_t* outbuf, int32_t nrofsamples, int32_t frequency) {
 	int16_t ic, is;
 	int32_t r;
 	int16_t amplification;							// amount to amplify afterwards
@@ -1590,7 +1590,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 				
 				//preparation of wave pointers and freq offset
 				for(ic=0; ic < chanNr; ic++) {
-					Voice* vc;
+					JT1Voice* vc;
 					int16_t instnr;
 					int16_t volMain, volEcho;
 					
@@ -1603,7 +1603,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 							vc->wavePtr  = (int16_t*)vc->sampledata;
 							vc->isSample = 1;
 						} else {
-							Inst* inst = THIS->m_song->instruments[instnr];
+							JT1Inst* inst = THIS->m_song->instruments[instnr];
 							vc->wavePtr    = &vc->waves[256*inst->waveform];
 							vc->waveLength = ((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
 							vc->isSample   = 0;
@@ -1710,7 +1710,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
             
 			tempdelaycnt = THIS->m_DelayCnt;
 			for(ic=0; ic < SE_NROFCHANS; ic++) {
-				Voice* vc = &THIS->m_ChannelData[ic];
+				JT1Voice* vc = &THIS->m_ChannelData[ic];
 				
 				temp[ic].synthPos      = vc->synthPos;
 				temp[ic].sampPos       = vc->samplepos;
@@ -1767,7 +1767,7 @@ void jaytrax_renderChunk(JayPlayer* THIS, int16_t* outbuf, int32_t nrofsamples, 
 			THIS->m_DelayCnt = tempdelaycnt;
 			
 			for(ic=0; ic < SE_NROFCHANS; ic++) {
-				Voice* vc = &THIS->m_ChannelData[ic];
+				JT1Voice* vc = &THIS->m_ChannelData[ic];
 				
 				vc->synthPos    = temp[ic].synthPos;
 				vc->samplepos   = temp[ic].sampPos;
