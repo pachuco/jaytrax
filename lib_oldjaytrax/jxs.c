@@ -9,9 +9,10 @@
 //---------------------JXS3457
 
 static int struct_readHeader(JT1Song* dest, FILE* fin) {
-    J3457Header t;
+
+    f_JT1Header t;
     
-    fread(&t, sizeof(J3457Header), 1, fin);
+    fread(&t, sizeof(f_JT1Header), 1, fin);
     dest->mugiversion = t.mugiversion;
     dest->nrofpats    = t.nrofpats;
     dest->nrofsongs   = t.nrofsongs;
@@ -21,10 +22,10 @@ static int struct_readHeader(JT1Song* dest, FILE* fin) {
 
 static int struct_readSubsong(JT1Subsong* dest, size_t len, FILE* fin) {
     uint32_t i, j, k;
-    J3457Subsong t;
+    f_JT1Subsong t;
     
     for (i=0; i < len; i++) {
-        fread(&t, sizeof(J3457Subsong), 1, fin);
+        fread(&t, sizeof(f_JT1Subsong), 1, fin);
         for (j=0; j < J3457_CHANS_SUBSONG; j++) dest[i].mute[j] = t.mute[j];
         dest[i].songspd         = t.songspd;
         dest[i].groove          = t.groove;
@@ -54,10 +55,10 @@ static int struct_readSubsong(JT1Subsong* dest, size_t len, FILE* fin) {
 
 static int struct_readPat(JT1Row* dest, size_t len, FILE* fin) {
     uint32_t i, j;
-    J3457Row t[J3457_ROWS_PAT];
+    f_JT1Row t[J3457_ROWS_PAT];
     
     for (i=0; i < len; i++) {
-        fread(&t, sizeof(J3457Row)*J3457_ROWS_PAT, 1, fin);
+        fread(&t, sizeof(f_JT1Row)*J3457_ROWS_PAT, 1, fin);
         for (j=0; j < J3457_ROWS_PAT; j++) {
             uint32_t off = i*J3457_ROWS_PAT + j;
             dest[off].srcnote = t[j].srcnote;
@@ -72,9 +73,9 @@ static int struct_readPat(JT1Row* dest, size_t len, FILE* fin) {
 
 static int struct_readInst(JT1Inst* dest, size_t len, FILE* fin) {
     uint32_t i, j;
-    J3457Inst t;
+    f_JT1Inst t;
     for (i=0; i < len; i++) {
-        fread(&t, sizeof(J3457Inst), 1, fin);
+        fread(&t, sizeof(f_JT1Inst), 1, fin);
         dest[i].mugiversion     = t.mugiversion;
         memcpy(&dest[i].instname, &t.instname, 32);
         dest[i].waveform        = t.waveform;

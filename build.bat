@@ -1,8 +1,7 @@
 @echo off
-setlocal enableDelayedExpansion
 
-set gccbase=G:\p_files\rtdk\mingw32-gcc5
-set fbcbase=G:\p_files\rtdk\FBC
+set gccbase=G:\p_files\rtdk\i686-8.1.0-win32-dwarf-rt_v6-rev0\mingw32
+set PATH=%PATH%;%gccbase%\bin
 
 set opts=-std=c99 -mconsole -Os -s -Wall -Wextra
 set link=-lwinmm
@@ -16,7 +15,6 @@ set c_cli=%cli%\main.c %cli%\winmmout.c
 set includes=-I%ljayold% -I%cli%
 set compiles=%c_cli% %c_liboldjay%
 
-set PATH=%PATH%;%gccbase%\bin;%fbcbase%
 
 set outname=oldjaytrax_cli
 del %bin%\%outname%.exe

@@ -12,14 +12,14 @@
 #define J3457_ARPS_SONG (16)
 #define J3457_STEPS_ARP (16)
 
-typedef struct J3457Order J3457Order;
-struct J3457Order {
+typedef struct f_JT1Order f_JT1Order;
+struct f_JT1Order {
     int16_t         patnr;      // welk pattern spelen...
     int16_t         patlen;     // 0/16/32/48
 } __attribute__((__packed__));
 
-typedef struct J3457Row J3457Row;
-struct J3457Row {
+typedef struct f_JT1Row f_JT1Row;
+struct f_JT1Row {
     uint8_t         srcnote;
     uint8_t         dstnote;
     uint8_t         inst;
@@ -27,8 +27,8 @@ struct J3457Row {
     uint8_t         script;
 } __attribute__((__packed__));
 
-typedef struct J3457Header J3457Header;
-struct J3457Header {
+typedef struct f_JT1Header f_JT1Header;
+struct f_JT1Header {
     int16_t         mugiversion;//version of mugician this song was saved with
     int16_t         PAD00;
     int32_t         nrofpats;   //aantal patterns beschikbaar
@@ -53,8 +53,8 @@ struct J3457Header {
 	int16_t         PAD11;
 } __attribute__((__packed__));
 
-typedef struct J3457Subsong J3457Subsong;
-struct J3457Subsong {
+typedef struct f_JT1Subsong f_JT1Subsong;
+struct f_JT1Subsong {
     int32_t         PAD00[J3457_CHANS_SUBSONG];
     uint8_t         mute[J3457_CHANS_SUBSONG];   // which channels are muted? (1=muted)
     int32_t         songspd;    // delay tussen de pattern-stepjes
@@ -77,11 +77,11 @@ struct J3457Subsong {
     int16_t         PAD04;
     int16_t         PAD05;
     int16_t         PAD06;
-    J3457Order      orders[J3457_CHANS_SUBSONG][J3457_ORDERS_SUBSONG];
+    f_JT1Order      orders[J3457_CHANS_SUBSONG][J3457_ORDERS_SUBSONG];
 } __attribute__((__packed__));
 
-typedef struct J3457Effect J3457Effect;
-struct J3457Effect {
+typedef struct f_JT1Effect f_JT1Effect;
+struct f_JT1Effect {
     int32_t         dsteffect;
     int32_t         srceffect1;
     int32_t         srceffect2;
@@ -97,8 +97,8 @@ struct J3457Effect {
 } __attribute__((__packed__));
 
 // inst is the structure which has the entire instrument definition.
-typedef struct J3457Inst J3457Inst;
-struct J3457Inst {
+typedef struct f_JT1Inst f_JT1Inst;
+struct f_JT1Inst {
     int16_t         mugiversion;
     char            instname[32];
     int16_t         waveform;
@@ -123,7 +123,7 @@ struct J3457Inst {
     int16_t         PAD03;
 	int16_t         PAD04;
 	int16_t         PAD05;
-    J3457Effect     fx[J3457_EFF_INST];
+    f_JT1Effect     fx[J3457_EFF_INST];
     char            samplename[192]; // path naar de gebruikte sample (was _MAX_PATH lang... is nu getruncate naar 192)(in de toekomst nog kleiner?)
     int32_t         PAD06;
     int32_t         PAD07;

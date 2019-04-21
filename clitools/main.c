@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
                         winmm_leaveCrit();
                         updateDisplay();
                     }
-					SleepEx(1, 0);
+					SleepEx(1, 1);
 					// do other stuff
 				}
 			} else FAIL("Cannot open mixer.");
