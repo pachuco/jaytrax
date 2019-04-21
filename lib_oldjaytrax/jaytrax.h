@@ -5,6 +5,7 @@
 #define MIXBUF_LEN    (512)   //temporary mixing buffer length
 #define MIXBUF_NR     (4)     //number of such buffers. See below enum for their types.
 #define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
+#define SAMPSPOOLSIZE (0x7FF)  //buffer for unrolling samples
 
 enum INTERP_LIST {
     ITP_NONE,
@@ -187,7 +188,6 @@ struct JT1Voice {
 	uint8_t		loopflg;
 	uint8_t		bidirecflg;
 	uint8_t		curdirecflg;
-    uint8_t     hasLooped;
 	int32_t		synthPos;
 	int32_t		samplepos;
 	int32_t		lastplaypos;
@@ -201,9 +201,6 @@ struct JT1Voice {
 	int16_t		gainMainR;
 	int16_t		gainEchoL;
 	int16_t		gainEchoR;
-    int16_t     itpStart[MAX_TAPS*2];
-    int16_t     itpLoop [MAX_TAPS*2];
-    int16_t     itpEnd  [MAX_TAPS*2];
 	
 	JT1VoiceEffect fx[SE_WAVES_INST];
 	int16_t		waves[SE_WAVES_INST * SE_SAMPS_WAVE];
@@ -213,8 +210,7 @@ typedef struct Interpolator Interpolator;
 struct Interpolator {
     uint8_t id;
     int16_t numTaps;
-    int32_t (*fItpSynth) (JT1Voice* vc, int32_t* p);
-    int32_t (*fItpSamp)  (JT1Voice* vc, int32_t* p);
+    int32_t (*fItp) (int16_t* buf, int pos, int sizeMask);
     char    name[32];
 };
 
@@ -239,6 +235,7 @@ struct JT1Player {
     int16_t     overlapCnt;   // Used to store how much overlap we have already rendered
     uint16_t    delayCnt;		// Internal counter used for delay
     int32_t     tempBuf[MIXBUF_LEN * MIXBUF_NR];
+    int16_t     sampleSpool[SAMPSPOOLSIZE];
     Interpolator* itp;
 
     int32_t	    playMode;		    // in which mode is the replayer? Song or patternmode?

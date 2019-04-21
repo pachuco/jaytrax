@@ -831,7 +831,6 @@ static void playInstrument(JT1Player* THIS, int32_t channr, int32_t instNum, int
 		vc->loopflg = ins->loopflg;
 		vc->bidirecflg = ins->bidirecflg;
 		vc->curdirecflg = 0;
-        vc->hasLooped = 0;
 
 		vc->lastplaypos = -1; // first time
 		vc->freqdel = ins->fmdelay;
@@ -1374,10 +1373,6 @@ static void clearSoundBuffers(JT1Player* THIS) {
 		vc->gainMainR	= 0;
 		vc->gainEchoL	= 0;
 		vc->gainEchoR	= 0;
-        vc->hasLooped   = 0;
-        memset(&vc->itpStart, 0, MAX_TAPS*2);
-        memset(&vc->itpLoop,  0, MAX_TAPS*2);
-        memset(&vc->itpEnd,   0, MAX_TAPS*2);
 		
 		for(j=0;j<4;j++) {
             JT1VoiceEffect* vfx = &vc->fx[j];
@@ -1530,7 +1525,7 @@ JT1Player* jaytrax_init() {
 	THIS->song = NULL;
 	THIS->subsong = NULL;
 
-	//initialize renderingcounters and speed
+	//initialize rendering counters and speed
 	THIS->timeCnt = 2200;
 	THIS->timeSpd = 2200;
     
@@ -1637,13 +1632,6 @@ void jaytrax_renderChunk(JT1Player* THIS, int16_t* outbuf, int32_t nrofsamples, 
 					vc->gainMainR = (vc->gainMainR * volMain)>>8;
 					vc->gainEchoL = (vc->gainMainL * volEcho)>>8;
 					vc->gainEchoR = (vc->gainMainR * volEcho)>>8;
-                    
-                    //prepare interpolation zones
-                    if (vc->isSample) {
-                        //itpStart[MAX_TAPS*2];
-                        //itpLoop [MAX_TAPS*2];
-                        //itpEnd  [MAX_TAPS*2];
-                    }
 				}
 				amplification = THIS->subsong->amplification;
 				echodelaytime = THIS->subsong->delaytime;
