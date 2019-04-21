@@ -152,6 +152,74 @@ void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
                     }
                 }
             }
+        } else if (0 && vc->isSample) { //experimental sample render mark II
+            int32_t nos;
+            
+            if (!vc->wavePtr) continue;
+            if (vc->samplepos < 0) continue;
+            fItp = THIS->itp->fItp;
+            
+            while (doneSmp < numSamples) {
+                int nosSpool, pos;
+                
+                nos = numSamples - doneSmp;
+                //make sure we are not going outside the sample spool
+                while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
+                
+                //unroll sample into spool
+                pos = vc->samplepos;
+                for (is=0; is < nosSpool; is++) {
+                    THIS->sampleSpool[is] = vc->wavePtr[pos>>8];
+                    pos += vc->curdirecflg ? -0x100 : 0x100;
+                    
+                    //TODO: per-chunkofsample instead of per-sample, like Mark I renderer
+                    if (vc->curdirecflg) { //backwards
+                        if (pos < vc->looppoint) {
+                            pos += 0x100;
+                            vc->curdirecflg = 0;
+                        }
+                    } else { // forwards
+                        if (pos >= vc->endpoint) {
+                            if (vc->loopflg) { //has loop
+                                if(vc->bidirecflg) { //bidi
+                                    pos -= 0x100;
+                                    vc->curdirecflg = 1;
+                                } else { //straight
+                                    pos -= (vc->endpoint - vc->looppoint);
+                                }
+                            } else { //oneshot
+                                while (is < nosSpool) THIS->sampleSpool[is++] = 0;
+                            }
+                        }
+                    }
+                }
+                pos = vc->samplepos;
+                
+                //playback of sample
+                for (is=0; is < nos; is++) {
+                    tempBuf[doneSmp] = fItp(THIS->sampleSpool, vc->samplepos - pos, SAMPSPOOLSIZE<<8);//THIS->sampleSpool[(vc->samplepos - pos)>>8];
+                    vc->samplepos += vc->freqOffset;
+                    doneSmp++;
+                }
+                
+                //fix samplepos AND direction after we are done
+                if (vc->samplepos >= vc->endpoint) {
+                    if (vc->loopflg) { //it loops
+                        int loopLen = vc->endpoint - vc->looppoint;
+                        
+                        if (vc->bidirecflg && (((vc->samplepos - vc->looppoint) / loopLen) & 1)) { //bidi and backwards
+                            vc->samplepos = vc->endpoint - ((vc->samplepos - vc->endpoint) % loopLen + 1);
+                            vc->curdirecflg = 1;
+                        } else { //forwards
+                            vc->samplepos = vc->looppoint + ((vc->samplepos - vc->looppoint) % loopLen);
+                            vc->curdirecflg = 0;
+                        }
+                    } else { //oneshot
+                        vc->samplepos = -1;
+                    }
+                }
+            }
+            
         } else { //synth render
             int32_t nos;
             
