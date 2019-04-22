@@ -63,11 +63,11 @@ Interpolator interps[INTERP_COUNT] = {
     //{ITP_BLEP,     -1, &mixSynthNearest, &mixSampNearest, "BLEP"} //BLEP needs variable amount of taps
 };
 
-static void smpCpyFrw(int16_t* destination, const int16_t* source, size_t num) {
+static void smpCpyFrw(int16_t* destination, const int16_t* source, int32_t num) {
     memcpy(destination, source, num * sizeof(int16_t));
 }
 
-static void smpCpyRev(int16_t* destination, const int16_t* source, size_t num) {
+static void smpCpyRev(int16_t* destination, const int16_t* source, int32_t num) {
     for (int i=0; i < num; i++) {
         destination[i] = source[num-1 - i];
     }
@@ -175,7 +175,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
                 
                 //unroll sample into spool
-                pos = vc->samplepos & 0xFFFFFF00;
+                pos = vc->samplepos;
                 for (is=0; is < nosSpool; is++) {
                     THIS->sampleSpool[is] = vc->wavePtr[pos>>8];
                     pos += vc->curdirecflg ? -0x100 : 0x100;
@@ -243,7 +243,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
                 
                 //unroll sample into spool
-                pos = vc->samplepos;
+                pos = vc->samplepos; //& 0xFFFFFF00;
                 for (is=0; is < nosSpool;) {
                     int dif;
                     
@@ -293,13 +293,14 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 //fix samplepos AND direction after we are done
                 if (vc->samplepos >= vc->endpoint) {
                     if (vc->loopflg) { //it loops
-                        int loopLen = vc->endpoint - vc->looppoint;
+                        int32_t loopLen = vc->endpoint  - vc->looppoint;
+                        int32_t relPos  = vc->samplepos - vc->looppoint;
                         
-                        if (vc->bidirecflg && (((vc->samplepos - vc->looppoint) / loopLen) & 1)) { //bidi and backwards
-                            vc->samplepos = vc->looppoint + (loopLen - ((vc->samplepos - vc->endpoint) % loopLen)); //broken
+                        if (vc->bidirecflg && ((relPos / loopLen) & 1)) { //bidi and backwards
+                            vc->samplepos = vc->endpoint  - (relPos % loopLen);
                             vc->curdirecflg = 1;
                         } else { //forwards
-                            vc->samplepos = vc->looppoint + ((vc->samplepos - vc->endpoint) % loopLen);
+                            vc->samplepos = vc->looppoint + (relPos % loopLen);
                             vc->curdirecflg = 0;
                         }
                     } else { //oneshot
