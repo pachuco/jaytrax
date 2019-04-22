@@ -100,12 +100,12 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
         int32_t (*fItp) (int16_t* buf, int pos, int sizeMask);
         
         doneSmp = 0;
-        if (0 && vc->isSample) { //sample render mark I
+        if (vc->isSample) { //sample render mark I
             int32_t nos;
             
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
-            //fItp = THIS->itp->fItp;
+            fItp = THIS->itp->fItp;
             
             while (doneSmp < numSamples) {
                 int32_t delta, fracMask, dif;
@@ -126,15 +126,15 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 
                 //loop unroll optimization
                 if (nos&1) {
-                    tempBuf[doneSmp] = vc->wavePtr[vc->samplepos>>8];
+                    tempBuf[doneSmp] = fItp(vc->wavePtr, vc->samplepos ^ fracMask, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                     vc->samplepos += delta;
                     doneSmp++;
                 }
                 nos >>= 1;
                 for (is=0; is < nos; is++) {
-                    tempBuf[doneSmp + (is << 1) + 0] = vc->wavePtr[vc->samplepos>>8];
+                    tempBuf[doneSmp + (is << 1) + 0] = fItp(vc->wavePtr, vc->samplepos ^ fracMask, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                     vc->samplepos += delta;
-                    tempBuf[doneSmp + (is << 1) + 1] = vc->wavePtr[vc->samplepos>>8];
+                    tempBuf[doneSmp + (is << 1) + 1] = fItp(vc->wavePtr, vc->samplepos ^ fracMask, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                     vc->samplepos += delta;
                 }
                 doneSmp += nos << 1;
@@ -228,7 +228,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 }
             }
             
-        } else if (vc->isSample) { //experimental sample render mark III
+        } else if (0 && vc->isSample) { //experimental sample render mark III
             int32_t nos;
             
             if (!vc->wavePtr) continue;
