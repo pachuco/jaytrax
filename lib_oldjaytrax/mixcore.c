@@ -55,13 +55,23 @@ static int32_t itpCubic(int16_t* buf, int pos, int sizeMask) {
 }
 
 Interpolator interps[INTERP_COUNT] = {
-    {ITP_NONE,      0, &itpNone, "None"},
+    {ITP_NONE,      0, &itpNone,    "None"},
     {ITP_NEAREST,   1, &itpNearest, "Nearest"},
-    {ITP_LINEAR,    2, &itpLinear, "Linear"},
-    {ITP_QUADRATIC, 3, &itpQuad, "Quadratic"},
-    {ITP_CUBIC,     4, &itpCubic, "Cubic"},
+    {ITP_LINEAR,    2, &itpLinear,  "Linear"},
+    {ITP_QUADRATIC, 3, &itpQuad,    "Quadratic"},
+    {ITP_CUBIC,     4, &itpCubic,   "Cubic"},
     //{ITP_BLEP,     -1, &mixSynthNearest, &mixSampNearest, "BLEP"} //BLEP needs variable amount of taps
 };
+
+static void smpCpyFrw(int16_t* destination, const int16_t* source, size_t num) {
+    memcpy(destination, source, num * sizeof(int16_t));
+}
+
+static void smpCpyRev(int16_t* destination, const int16_t* source, size_t num) {
+    for (int i=0; i < num; i++) {
+        destination[i] = source[num-1 - i];
+    }
+}
 
 //---------------------API
 
@@ -73,19 +83,6 @@ uint8_t jaymix_setInterp(Interpolator** out, uint8_t id) {
         }
     }
     return 0;
-}
-
-static void smpCpyFrw(int16_t* destination, const int16_t* source, size_t num) {
-    memcpy(destination, source, num * sizeof(int16_t));
-    //for (int i=0; i < num; i++) {
-    //    destination[i] = source[i];
-    //}
-}
-
-static void smpCpyRev(int16_t* destination, const int16_t* source, size_t num) {
-    for (int i=0; i < num; i++) {
-        destination[i] = source[num-1 - i];
-    }
 }
 
 void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
@@ -180,7 +177,7 @@ void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
                 while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
                 
                 //unroll sample into spool
-                pos = vc->samplepos;
+                pos = vc->samplepos & 0xFFFFFF00;
                 for (is=0; is < nosSpool; is++) {
                     THIS->sampleSpool[is] = vc->wavePtr[pos>>8];
                     pos += vc->curdirecflg ? -0x100 : 0x100;
@@ -301,13 +298,14 @@ void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
                         int loopLen = vc->endpoint - vc->looppoint;
                         
                         if (vc->bidirecflg && (((vc->samplepos - vc->looppoint) / loopLen) & 1)) { //bidi and backwards
-                            vc->samplepos = vc->endpoint - ((vc->samplepos - vc->endpoint) % loopLen + 1);
+                            vc->samplepos = vc->looppoint + (loopLen - ((vc->samplepos - vc->endpoint) % loopLen)); //broken
                             vc->curdirecflg = 1;
                         } else { //forwards
-                            vc->samplepos = vc->looppoint + ((vc->samplepos - vc->looppoint) % loopLen);
+                            vc->samplepos = vc->looppoint + ((vc->samplepos - vc->endpoint) % loopLen);
                             vc->curdirecflg = 0;
                         }
                     } else { //oneshot
+                        while (doneSmp < numSamples) tempBuf[doneSmp++] = 0;
                         vc->samplepos = -1;
                     }
                 }

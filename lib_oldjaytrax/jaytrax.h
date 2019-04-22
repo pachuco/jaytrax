@@ -3,9 +3,8 @@
 
 #define WANTEDOVERLAP (15)    //wanted declick overlap length(in samples). Will be smaller than a song tick.
 #define MIXBUF_LEN    (512)   //temporary mixing buffer length
-#define MIXBUF_NR     (4)     //number of such buffers. See below enum for their types.
 #define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
-#define SAMPSPOOLSIZE (0x7FF) //buffer for unrolling samples
+#define SAMPSPOOLSIZE (0xFFF) //buffer for unrolling samples
 
 enum INTERP_LIST {
     ITP_NONE,
@@ -21,7 +20,8 @@ enum SE_BUFTYPE {
     BUF_MAINL,
     BUF_MAINR,
     BUF_ECHOL,
-    BUF_ECHOR
+    BUF_ECHOR,
+    MIXBUF_NR
 };
 
 enum SE_PLAYMODE {
