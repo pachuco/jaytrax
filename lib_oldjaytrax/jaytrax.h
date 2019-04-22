@@ -5,7 +5,7 @@
 #define MIXBUF_LEN    (512)   //temporary mixing buffer length
 #define MIXBUF_NR     (4)     //number of such buffers. See below enum for their types.
 #define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
-#define SAMPSPOOLSIZE (0x7FF)  //buffer for unrolling samples
+#define SAMPSPOOLSIZE (0x7FF) //buffer for unrolling samples
 
 enum INTERP_LIST {
     ITP_NONE,
