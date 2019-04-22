@@ -131,7 +131,7 @@ static int struct_readInst(JT1Inst* dest, size_t len, FILE* fin) {
 
 //---------------------
 
-int jxsfile_loadSong(char* path, JT1Song** sngOut) {
+int jxsfile_readSong(char* path, JT1Song** sngOut) {
     #define FAIL(x) {error=(x); goto _ERR;}
     char buf[BUFSIZ];
     FILE *fin;

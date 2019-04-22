@@ -154,5 +154,5 @@ struct f_JT1Inst {
 
 //---------------------
 
-int jxsfile_loadSong(char* path, JT1Song** sngOut);
+int jxsfile_readSong(char* path, JT1Song** sngOut);
 #endif

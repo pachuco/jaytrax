@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     exFnameFromPath(&fileName[0], argv[1], MAX_FN);
     jay = jaytrax_init();
     
-    if (jxsfile_loadSong(argv[1], &song)==0) {
+    if (jxsfile_readSong(argv[1], &song)==0) {
 		if (jaytrax_loadSong(jay, song)) {
 			if (winmm_openMixer(&wf, &audioCB)) {
                 updateDisplay();
