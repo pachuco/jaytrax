@@ -3,7 +3,6 @@
 
 #define WANTEDOVERLAP (15)    //wanted declick overlap length(in samples). Will be smaller than a song tick.
 #define MIXBUF_LEN    (512)   //temporary mixing buffer length
-#define MAX_TAPS      (16)    //maximum number of interpolation taps we can have
 #define SAMPSPOOLSIZE (0xFFF) //buffer for unrolling samples
 
 enum INTERP_LIST {
@@ -210,7 +209,7 @@ typedef struct Interpolator Interpolator;
 struct Interpolator {
     uint8_t id;
     int16_t numTaps;
-    int32_t (*fItp) (int16_t* buf, int pos, int sizeMask);
+    int32_t (*fItp) (int16_t* buf, int32_t pos, int32_t sizeMask);
     char    name[32];
 };
 

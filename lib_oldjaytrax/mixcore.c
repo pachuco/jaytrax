@@ -13,15 +13,15 @@
 //---------------------interpolators
 #define GET_PT(x) buf[((pos + ((x)<<8)) & sizeMask)>>8]
 
-static int32_t itpNone(int16_t* buf, int pos, int sizeMask) {
+static int32_t itpNone(int16_t* buf, int32_t pos, int32_t sizeMask) {
     return 0;(void)buf;(void)pos;(void)sizeMask;
 }
 
-static int32_t itpNearest(int16_t* buf, int pos, int sizeMask) {
+static int32_t itpNearest(int16_t* buf, int32_t pos, int32_t sizeMask) {
     return GET_PT(0);
 }
 
-static int32_t itpLinear(int16_t* buf, int pos, int sizeMask) {
+static int32_t itpLinear(int16_t* buf, int32_t pos, int32_t sizeMask) {
     int32_t p[2];
     int32_t frac = pos & 0xFF;
     
@@ -31,7 +31,7 @@ static int32_t itpLinear(int16_t* buf, int pos, int sizeMask) {
     return ITP_T02_S16_I08_LINEAR(p, frac);
 }
 
-static int32_t itpQuad(int16_t* buf, int pos, int sizeMask) {
+static int32_t itpQuad(int16_t* buf, int32_t pos, int32_t sizeMask) {
     int32_t p[3];
     int32_t frac = (pos & 0xFF)<<7;
     
@@ -42,7 +42,7 @@ static int32_t itpQuad(int16_t* buf, int pos, int sizeMask) {
     return ITP_T03_S16_I15_QUADRA(p, frac);
 }
 
-static int32_t itpCubic(int16_t* buf, int pos, int sizeMask) {
+static int32_t itpCubic(int16_t* buf, int32_t pos, int32_t sizeMask) {
     int32_t p[4];
     double frac = (double)(pos & 0xFF)/255;
     
@@ -85,11 +85,11 @@ uint8_t jaymix_setInterp(Interpolator** out, uint8_t id) {
     return 0;
 }
 
-void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
+void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
     int32_t  tempBuf[MIXBUF_LEN];
-    int16_t  ic, is, doneSmp;
+    int32_t  ic, is, doneSmp;
     int32_t* outBuf = &THIS->tempBuf[0];
-    int16_t  chanNr = THIS->subsong->nrofchans;
+    int32_t chanNr = THIS->subsong->nrofchans;
     
     assert(numSamples <= MIXBUF_LEN);
     memset(&outBuf[0], 0, numSamples * MIXBUF_NR * sizeof(int32_t));
@@ -98,8 +98,6 @@ void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
     for (ic=0; ic < chanNr; ic++) {
         JT1Voice* vc = &THIS->voices[ic];
         int32_t (*fItp) (int16_t* buf, int pos, int sizeMask);
-        
-        assert(THIS->itp->numTaps <= MAX_TAPS);
         
         doneSmp = 0;
         if (0 && vc->isSample) { //sample render mark I
@@ -170,7 +168,7 @@ void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
             fItp = THIS->itp->fItp;
             
             while (doneSmp < numSamples) {
-                int nosSpool, pos;
+                int32_t nosSpool, pos;
                 
                 nos = numSamples - doneSmp;
                 //make sure we are not going outside the sample spool
@@ -215,7 +213,7 @@ void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
                 //fix samplepos AND direction after we are done
                 if (vc->samplepos >= vc->endpoint) {
                     if (vc->loopflg) { //it loops
-                        int loopLen = vc->endpoint - vc->looppoint;
+                        int32_t loopLen = vc->endpoint - vc->looppoint;
                         
                         if (vc->bidirecflg && (((vc->samplepos - vc->looppoint) / loopLen) & 1)) { //bidi and backwards
                             vc->samplepos = vc->endpoint - ((vc->samplepos - vc->endpoint) % loopLen + 1);
@@ -238,7 +236,7 @@ void jaymix_mixCore(JT1Player* THIS, int16_t numSamples) {
             fItp = THIS->itp->fItp;
             
             while (doneSmp < numSamples) {
-                int nosSpool, pos;
+                int32_t nosSpool, pos;
                 
                 nos = numSamples - doneSmp;
                 //make sure we are not going outside the sample spool
