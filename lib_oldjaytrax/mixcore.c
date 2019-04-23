@@ -175,7 +175,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
                 
                 //unroll sample into spool
-                pos = vc->samplepos;
+                pos = vc->samplepos & 0xFFFFFF00;
                 for (is=0; is < nosSpool; is++) {
                     THIS->sampleSpool[is] = vc->wavePtr[pos>>8];
                     pos += vc->curdirecflg ? -0x100 : 0x100;
@@ -201,7 +201,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                         }
                     }
                 }
-                pos = vc->samplepos;
+                pos = vc->samplepos & 0xFFFFFF00;
                 
                 //playback of sample
                 for (is=0; is < nos; is++) {
@@ -243,7 +243,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
                 
                 //unroll sample into spool
-                pos = vc->samplepos; //& 0xFFFFFF00;
+                pos = vc->samplepos & 0xFFFFFF00;
                 for (is=0; is < nosSpool;) {
                     int dif;
                     
@@ -281,7 +281,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                         }
                     }
                 }
-                pos = vc->samplepos;
+                pos = vc->samplepos & 0xFFFFFF00;
                 
                 //playback of sample
                 for (is=0; is < nos; is++) {
