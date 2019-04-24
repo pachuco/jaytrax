@@ -7,7 +7,7 @@
 //#define CLAMP16(x) if ((int16_t)(x) != x) x = 0x7FFF ^ (x >> 31) //fast 32 -> 16 bit clamp
 #define CLAMP16(x) (int16_t)(x) != x ? 0x7FFF ^ (x >> 31) : x //fast 32 -> 16 bit clamp
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#define CHKPOS(VC) assert((VC->samplepos >= 0) && ((VC->curdirecflg && (VC->samplepos >= VC->looppoint)) || (VC->samplepos < VC->endpoint )))
+#define CHKPOS(VC) assert((VC->samplepos >= 0) && ((VC->curdirecflg && (VC->samplepos >= VC->looppoint)) || (VC->samplepos < VC->endpoint)))
 
 void    jaymix_mixCore(JT1Player* SELF, int32_t numSamples);
 uint8_t jaymix_setInterp(Interpolator** out, uint8_t id);

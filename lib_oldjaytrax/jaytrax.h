@@ -189,7 +189,6 @@ struct JT1Voice {
 	uint8_t		curdirecflg;
 	int32_t		synthPos;
 	int32_t		samplepos;
-	int32_t		lastplaypos;
 	
 	//immediate render vars
 	uint8_t		isSample;

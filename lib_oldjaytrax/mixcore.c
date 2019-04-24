@@ -124,6 +124,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 
                 //playback of sample
                 for (is=0; is < nos; is++) {
+                    CHKPOS(vc);
                     //this is wrong because it reads outside loops instead of wrapping taps
                     tempBuf[doneSmp++] = fItp(vc->wavePtr, vc->samplepos, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                     vc->samplepos += delta;
@@ -182,15 +183,14 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 
                 if (vc->curdirecflg) { //backwards
                     if (vc->samplepos < vc->looppoint) {
-                        do
-                        {
+                        do {
                             vc->samplepos  += (vc->endpoint - vc->looppoint);
                             vc->curdirecflg ^= 1; // toggle direction
-                        } while (vc->samplepos <= vc->looppoint);
+                        } while (vc->samplepos < vc->looppoint);
                         
                         // if forwards: backwards position -> forwards position
                         if (!vc->curdirecflg) vc->samplepos = (vc->endpoint - 1) - (vc->samplepos - vc->looppoint);
-                        else vc->samplepos ^= 0xFF;
+                        //else vc->samplepos ^= 0xFF;
                     }
                 } else { // forwards
                     if (vc->samplepos >= vc->endpoint) {
@@ -203,7 +203,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                                 
                                 // if backwards: forwards position -> backwards position
                                 if (vc->curdirecflg) vc->samplepos = (vc->endpoint - 1) - (vc->samplepos - vc->looppoint);
-                                else vc->samplepos ^= 0xFF;
+                                //else vc->samplepos ^= 0xFF;
                             } else { //straight
                                 do {
                                     vc->samplepos -= (vc->endpoint - vc->looppoint);

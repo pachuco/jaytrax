@@ -832,7 +832,6 @@ static void playInstrument(JT1Player* SELF, int32_t channr, int32_t instNum, int
 		vc->bidirecflg = ins->bidirecflg;
 		vc->curdirecflg = 0;
 
-		vc->lastplaypos = -1; // first time
 		vc->freqdel = ins->fmdelay;
 		for (i=0; i<SE_WAVES_INST; i++) {
 			if (ins->resetwave[i]) memcpy(&vc->waves[i*256], &ins->waves[i*256], 256 * sizeof(int16_t));
@@ -1356,7 +1355,6 @@ static void clearSoundBuffers(JT1Player* SELF) {
 		vc->endpoint = 0;
         vc->synthPos = 0;
 		vc->samplepos = 0;
-		vc->lastplaypos = 0;
 		vc->curvol = 0;
 		vc->curpan = 0;
 		vc->bendtonote = 0;
