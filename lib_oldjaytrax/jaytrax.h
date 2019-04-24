@@ -195,7 +195,8 @@ struct JT1Voice {
 	uint8_t		isSample;
 	int16_t*	wavePtr;
 	int32_t		waveLength;
-	int32_t		freqOffset;
+	uint32_t	freqOffset;
+    uint32_t    freqOffsetRev;
 	int16_t		gainMainL;
 	int16_t		gainMainR;
 	int16_t		gainEchoL;

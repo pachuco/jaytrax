@@ -1608,6 +1608,8 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
 					//calculate frequency
 					if (vc->curfreq < 10) vc->curfreq = 10;
 					vc->freqOffset = (256*vc->curfreq)/frequency;
+                    vc->freqOffsetRev = 0xFFFFFFFF;
+                    if (vc->freqOffset >= 2) vc->freqOffsetRev /= vc->freqOffset;
 					
 					if (vc->curpan == 0) { //panning?
 						vc->gainMainL = 256; //center
