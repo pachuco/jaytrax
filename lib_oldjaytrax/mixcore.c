@@ -106,21 +106,19 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
             fItp = SELF->itp->fItp;
+            
             while (doneSmp < numSamples) {
-                int32_t delta, fracMask, dif;
+                int32_t delta, dif;
                 int32_t maxSmp = numSamples - doneSmp;
                 
                 if (vc->curdirecflg) { //backwards
-                    dif   = vc->samplepos - vc->looppoint - 1;
+                    dif   = vc->samplepos - vc->looppoint;
                     delta = vc->freqOffset * -1;
-                    fracMask = 0xFF;
                 } else { //forwards
-                    dif = vc->endpoint - vc->samplepos - 1;
-                    delta = vc->freqOffset;
-                    fracMask = 0x00;
+                    dif = vc->endpoint - vc->samplepos;
+                    delta = vc->freqOffset * 1;
                 }
-                dif = dif > 0 ? dif : 1;
-                nos = (dif / vc->freqOffset) + 1;
+                nos = dif / vc->freqOffset;
                 if (nos > maxSmp) nos = maxSmp;
                 
                 //playback of sample
@@ -129,6 +127,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                     tempBuf[doneSmp++] = fItp(vc->wavePtr, vc->samplepos, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                     vc->samplepos += delta;
                 }
+                vc->samplepos += nos <= 0 ? delta : 0;
                 
                 if (vc->curdirecflg) { //backwards
                     if (vc->samplepos < vc->looppoint) {
