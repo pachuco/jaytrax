@@ -8,7 +8,7 @@
 #define CLAMP16(x) (int16_t)(x) != x ? 0x7FFF ^ (x >> 31) : x //fast 32 -> 16 bit clamp
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-void    jaymix_mixCore(JT1Player* THIS, int32_t numSamples);
+void    jaymix_mixCore(JT1Player* SELF, int32_t numSamples);
 uint8_t jaymix_setInterp(Interpolator** out, uint8_t id);
 
 #endif

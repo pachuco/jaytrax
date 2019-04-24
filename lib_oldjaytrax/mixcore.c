@@ -85,18 +85,18 @@ uint8_t jaymix_setInterp(Interpolator** out, uint8_t id) {
     return 0;
 }
 
-void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
+void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
     int32_t  tempBuf[MIXBUF_LEN];
     int32_t  ic, is, doneSmp;
-    int32_t* outBuf = &THIS->tempBuf[0];
-    int32_t chanNr = THIS->subsong->nrofchans;
+    int32_t* outBuf = &SELF->tempBuf[0];
+    int32_t chanNr = SELF->subsong->nrofchans;
     
     assert(numSamples <= MIXBUF_LEN);
     memset(&outBuf[0], 0, numSamples * MIXBUF_NR * sizeof(int32_t));
     
     
     for (ic=0; ic < chanNr; ic++) {
-        JT1Voice* vc = &THIS->voices[ic];
+        JT1Voice* vc = &SELF->voices[ic];
         int32_t (*fItp) (int16_t* buf, int pos, int sizeMask);
         
         doneSmp = 0;
@@ -105,8 +105,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
             
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
-            fItp = THIS->itp->fItp;
-            
+            fItp = SELF->itp->fItp;
             while (doneSmp < numSamples) {
                 int32_t delta, fracMask, dif;
                 int32_t maxSmp = numSamples - doneSmp;
@@ -157,19 +156,19 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
             
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
-            fItp = THIS->itp->fItp;
+            fItp = SELF->itp->fItp;
             
             while (doneSmp < numSamples) {
                 int32_t nosSpool, pos;
                 
                 nos = numSamples - doneSmp;
                 //make sure we are not going outside the sample spool
-                while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
+                while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + SELF->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
                 
                 //unroll sample into spool
                 pos = vc->samplepos & 0xFFFFFF00;
                 for (is=0; is < nosSpool; is++) {
-                    THIS->sampleSpool[is] = vc->wavePtr[pos>>8];
+                    SELF->sampleSpool[is] = vc->wavePtr[pos>>8];
                     pos += vc->curdirecflg ? -0x100 : 0x100;
                     
                     //TODO: per-chunkofsample instead of per-sample, like Mark I renderer
@@ -188,7 +187,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                                     pos -= (vc->endpoint - vc->looppoint);
                                 }
                             } else { //oneshot
-                                while (is < nosSpool) THIS->sampleSpool[is++] = 0;
+                                while (is < nosSpool) SELF->sampleSpool[is++] = 0;
                             }
                         }
                     }
@@ -197,7 +196,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 
                 //playback of sample
                 for (is=0; is < nos; is++) {
-                    tempBuf[doneSmp++] = fItp(THIS->sampleSpool, vc->samplepos - pos, SAMPSPOOLSIZE<<8);
+                    tempBuf[doneSmp++] = fItp(SELF->sampleSpool, vc->samplepos - pos, SAMPSPOOLSIZE<<8);
                     vc->samplepos += vc->freqOffset;
                 }
                 
@@ -226,14 +225,14 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
             
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
-            fItp = THIS->itp->fItp;
+            fItp = SELF->itp->fItp;
             
             while (doneSmp < numSamples) {
                 int32_t nosSpool, pos;
                 
                 nos = numSamples - doneSmp;
                 //make sure we are not going outside the sample spool
-                while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + THIS->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
+                while ((nosSpool = (((nos - 1) * (vc->freqOffset))>>8) + SELF->itp->numTaps) >= SAMPSPOOLSIZE) nos--;
                 
                 //unroll sample into spool
                 pos = vc->samplepos & 0xFFFFFF00;
@@ -244,7 +243,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                         dif = pos - vc->looppoint;
                         if (dif >= nosSpool<<8) dif = (nosSpool<<8);
                         
-                        smpCpyRev(THIS->sampleSpool+is, vc->wavePtr+((pos-dif)>>8), dif>>8);
+                        smpCpyRev(SELF->sampleSpool+is, vc->wavePtr+((pos-dif)>>8), dif>>8);
                         pos -= dif; is += dif>>8;
                         pos -= 0x100;
                         
@@ -256,7 +255,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                         dif = vc->endpoint - pos - 1;
                         if (dif >= nosSpool<<8) dif = (nosSpool<<8);
                         
-                        smpCpyFrw(THIS->sampleSpool+is, vc->wavePtr+(pos>>8), dif>>8);
+                        smpCpyFrw(SELF->sampleSpool+is, vc->wavePtr+(pos>>8), dif>>8);
                         pos += dif; is += dif>>8;
                         pos += 0x100;
                         
@@ -269,7 +268,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                                     pos -= (vc->endpoint - vc->looppoint);
                                 }
                             } else { //oneshot
-                                while (is < nosSpool) THIS->sampleSpool[is++] = 0;
+                                while (is < nosSpool) SELF->sampleSpool[is++] = 0;
                             }
                         }
                     }
@@ -278,7 +277,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 
                 //playback of sample
                 for (is=0; is < nos; is++) {
-                    tempBuf[doneSmp++] = fItp(THIS->sampleSpool, vc->samplepos - pos, SAMPSPOOLSIZE<<8);
+                    tempBuf[doneSmp++] = fItp(SELF->sampleSpool, vc->samplepos - pos, SAMPSPOOLSIZE<<8);
                     vc->samplepos += vc->freqOffset;
                 }
                 
@@ -311,7 +310,7 @@ void jaymix_mixCore(JT1Player* THIS, int32_t numSamples) {
                 vc->synthPos &= vc->waveLength;
                 continue;
             }
-            fItp = THIS->itp->fItp;
+            fItp = SELF->itp->fItp;
             
             //loop unroll optimization
             nos = numSamples;

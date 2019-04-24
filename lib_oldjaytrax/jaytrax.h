@@ -245,12 +245,12 @@ struct JT1Player {
 
 //---------------------API
 
-int   jaytrax_loadSong(JT1Player* THIS, JT1Song* sng);
-void  jaytrax_playSubSong(JT1Player* THIS, int subsongnr);
-void  jaytrax_stopSong(JT1Player* THIS);
-void  jaytrax_pauseSong(JT1Player* THIS);
-void  jaytrax_continueSong(JT1Player* THIS);
-void  jaytrax_setInterpolation(JT1Player* THIS, uint8_t id);
+int   jaytrax_loadSong(JT1Player* SELF, JT1Song* sng);
+void  jaytrax_playSubSong(JT1Player* SELF, int subsongnr);
+void  jaytrax_stopSong(JT1Player* SELF);
+void  jaytrax_pauseSong(JT1Player* SELF);
+void  jaytrax_continueSong(JT1Player* SELF);
+void  jaytrax_setInterpolation(JT1Player* SELF, uint8_t id);
 JT1Player* jaytrax_init();
-void  jaytrax_renderChunk(JT1Player* THIS, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
+void  jaytrax_renderChunk(JT1Player* SELF, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
 #endif
