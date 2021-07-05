@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <windows.h>
 #include "mixcore.h"
 #include "jaytrax.h"
 
@@ -98,6 +99,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
     for (ic=0; ic < chanNr; ic++) {
         JT1Voice* vc = &SELF->voices[ic];
         int32_t (*fItp) (int16_t* buf, int pos, int sizeMask);
+        int32_t loopLen = vc->endpoint - vc->looppoint;
         
         doneSmp = 0;
         if (0 && vc->isSample) { //sample render mark I-A
@@ -118,13 +120,13 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                     delta = vc->freqOffset * 1;
                 }
                 
-                nos = (dif ^ 0xFF) / vc->freqOffset;
+                nos = ((dif ^ 0xFF) / vc->freqOffset) + 1;
                 if (nos > maxSmp) nos = maxSmp;
-                //if (!nos) printf("a");
+                if (!nos) printf("a");
                 
                 //playback of sample
                 for (is=0; is < nos; is++) {
-                    CHKPOS(vc);
+                    assert(CHKPOS(vc));
                     //this is wrong because it reads outside loops instead of wrapping taps
                     tempBuf[doneSmp++] = fItp(vc->wavePtr, vc->samplepos, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                     vc->samplepos += delta;
@@ -143,7 +145,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                                 vc->samplepos -= vc->freqOffset;
                                 vc->curdirecflg  = 1;
                             } else { //straight
-                                vc->samplepos -= (vc->endpoint - vc->looppoint);
+                                vc->samplepos -= loopLen;
                             }
                         } else { //oneshot
                             vc->samplepos = -1;
@@ -152,7 +154,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                     }
                 }
             }
-        } else if (vc->isSample) { //sample render mark I-B
+        } else if (0 && vc->isSample) { //sample render mark I-B
             
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
@@ -176,7 +178,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 
                 //playback of sample
                 for (is=0; is < nos; is++) {
-                    //CHKPOS(vc);
+                    assert(CHKPOS(vc));
                     tempBuf[doneSmp++] = fItp(vc->wavePtr, vc->samplepos, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                     vc->samplepos += delta;
                 }
@@ -184,7 +186,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 if (vc->curdirecflg) { //backwards
                     if (vc->samplepos < vc->looppoint) {
                         do {
-                            vc->samplepos  += (vc->endpoint - vc->looppoint);
+                            vc->samplepos  += loopLen;
                             vc->curdirecflg ^= 1; // toggle direction
                         } while (vc->samplepos < vc->looppoint);
                         
@@ -197,7 +199,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                         if (vc->loopflg) { //has loop
                             if(vc->bidirecflg) { //bidi
                                 do {
-                                    vc->samplepos  -= (vc->endpoint - vc->looppoint);
+                                    vc->samplepos  -= loopLen;
                                     vc->curdirecflg ^= 1; // toggle direction    
                                 } while (vc->samplepos >= vc->endpoint);
                                 
@@ -206,7 +208,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                                 //else vc->samplepos ^= 0xFF;
                             } else { //straight
                                 do {
-                                    vc->samplepos -= (vc->endpoint - vc->looppoint);
+                                    vc->samplepos -= loopLen;
                                 } while (vc->samplepos >= vc->endpoint);
                             }
                         } else { //oneshot
@@ -216,15 +218,17 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                     }
                 }
             }
-        } else if (0 && vc->isSample) { //experimental sample render mark II
+        } else if (vc->isSample) { //experimental sample render mark II
             int32_t nos;
             
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
             fItp = SELF->itp->fItp;
             
+            int32_t fucks = vc->samplepos;
             while (doneSmp < numSamples) {
                 int32_t nosSpool, pos;
+                int8_t dir;
                 
                 nos = numSamples - doneSmp;
                 //make sure we are not going outside the sample spool
@@ -232,24 +236,27 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 
                 //unroll sample into spool
                 pos = vc->samplepos & 0xFFFFFF00;
+                dir = vc->curdirecflg;
                 for (is=0; is < nosSpool; is++) {
                     SELF->sampleSpool[is] = vc->wavePtr[pos>>8];
-                    pos += vc->curdirecflg ? -0x100 : 0x100;
+                    assert(CHKPOS(vc));
+                    pos += dir ? -0x100 : 0x100;
+                    //printf("%d ", (pos - fucks)>>8); fucks = pos;
                     
                     //TODO: per-chunkofsample instead of per-sample, like Mark I renderer
-                    if (vc->curdirecflg) { //backwards
+                    if (dir) { //backwards
                         if (pos < vc->looppoint) {
                             pos += 0x100;
-                            vc->curdirecflg = 0;
+                            dir = 0;
                         }
                     } else { // forwards
                         if (pos >= vc->endpoint) {
                             if (vc->loopflg) { //has loop
                                 if(vc->bidirecflg) { //bidi
                                     pos -= 0x100;
-                                    vc->curdirecflg = 1;
+                                    dir = 1;
                                 } else { //straight
-                                    pos -= (vc->endpoint - vc->looppoint);
+                                    pos -= loopLen;
                                 }
                             } else { //oneshot
                                 while (is < nosSpool) SELF->sampleSpool[is++] = 0;
@@ -257,6 +264,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                         }
                     }
                 }
+                //vc->curdirecflg = dir;
                 pos = vc->samplepos & 0xFFFFFF00;
                 
                 if (!nos || !nosSpool) printf("a");
@@ -270,14 +278,19 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 //fix samplepos AND direction after we are done
                 if (vc->samplepos >= vc->endpoint) {
                     if (vc->loopflg) { //it loops
-                        int32_t loopLen = vc->endpoint  - vc->looppoint;
-                        int32_t relPos  = vc->samplepos - vc->looppoint;
-                        
-                        if (vc->bidirecflg && ((relPos / loopLen) & 1)) { //bidi and backwards
-                            vc->samplepos = vc->endpoint  - (relPos % loopLen);
-                            vc->curdirecflg = 1;
+                        if (vc->bidirecflg) { //bidi
+                            do {
+                                vc->samplepos  -= loopLen;
+                                vc->curdirecflg ^= 1; // toggle direction    
+                            } while (vc->samplepos >= vc->endpoint);
+                            
+                            //reverse position if backwards
+                            if (vc->curdirecflg) vc->samplepos = (vc->endpoint - 1) - (vc->samplepos - vc->looppoint);
+                            //printf("a");
                         } else { //forwards
-                            vc->samplepos = vc->looppoint + (relPos % loopLen);
+                            do {
+                                vc->samplepos -= loopLen;
+                            } while (vc->samplepos >= vc->endpoint);
                             vc->curdirecflg = 0;
                         }
                     } else { //oneshot
@@ -332,7 +345,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                                     pos -= 0x100;
                                     vc->curdirecflg  = 1;
                                 } else { //straight
-                                    pos -= (vc->endpoint - vc->looppoint);
+                                    pos -= loopLen;
                                 }
                             } else { //oneshot
                                 while (is < nosSpool) SELF->sampleSpool[is++] = 0;
@@ -351,7 +364,6 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 //fix samplepos AND direction after we are done
                 if (vc->samplepos >= vc->endpoint) {
                     if (vc->loopflg) { //it loops
-                        int32_t loopLen = vc->endpoint  - vc->looppoint;
                         int32_t relPos  = vc->samplepos - vc->looppoint;
                         
                         if (vc->bidirecflg && ((relPos / loopLen) & 1)) { //bidi and backwards
