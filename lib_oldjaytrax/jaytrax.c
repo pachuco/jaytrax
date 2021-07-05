@@ -1363,7 +1363,6 @@ static void clearSoundBuffers(JT1Player* SELF) {
 		vc->bidirecflg = 0;
 		vc->curdirecflg = 0;
 		
-		vc->isSample 	= 0;
 		vc->wavePtr		= NULL;
 		vc->waveLength	= 0;
 		vc->freqOffset	= 0;
@@ -1594,20 +1593,16 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
 					} else {
 						if(vc->sampledata) {
 							vc->wavePtr  = (int16_t*)vc->sampledata;
-							vc->isSample = 1;
 						} else {
 							JT1Inst* inst = SELF->song->instruments[instnr];
 							vc->wavePtr    = &vc->waves[256*inst->waveform];
 							vc->waveLength = ((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
-							vc->isSample   = 0;
 						}
 					}
 					
 					//calculate frequency
 					if (vc->curfreq < 10) vc->curfreq = 10;
 					vc->freqOffset = (256*vc->curfreq)/frequency;
-                    vc->freqOffsetRev = 0xFFFFFFFF;
-                    if (vc->freqOffset >= 2) vc->freqOffsetRev /= vc->freqOffset;
 					
 					if (vc->curpan == 0) { //panning?
 						vc->gainMainL = 256; //center
