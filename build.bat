@@ -1,7 +1,6 @@
 @echo off
 
-set gccbase=G:\p_files\rtdk\i686-8.1.0-win32-dwarf-rt_v6-rev0\mingw32
-set PATH=%PATH%;%gccbase%\bin
+call getcomp rosbe
 
 set opts=-std=c99 -mconsole -Os -s -Wall -Wextra
 set link=-lwinmm
@@ -14,12 +13,16 @@ set c_cli=%cli%\main.c %cli%\winmmout.c
 
 set includes=-I%ljayold% -I%cli%
 set compiles=%c_cli% %c_liboldjay%
-
+set errlog=.\jaytraxcli_err.log
 
 set outname=oldjaytrax_cli
 del %bin%\%outname%.exe
-gcc -o %bin%\%outname%.exe %includes% %compiles% %opts% %link% 2> %outname%_err.log
+gcc -o %bin%\%outname%.exe %includes% %compiles% %opts% %link% 2> %errlog%
+
 IF %ERRORLEVEL% NEQ 0 (
-    echo oops %outname%!
-    pause
+    echo oops!
+    notepad %errlog%
+    goto :end
 )
+for %%R in (%errlog%) do if %%~zR lss 1 del %errlog%
+:end
