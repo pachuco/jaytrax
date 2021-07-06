@@ -1305,10 +1305,8 @@ static void handlePattern(JT1Player* SELF, int32_t channr) {
 }
 
 static void advanceSong(JT1Player* SELF) {
-    int i;
-    
     handleSong(SELF);
-    for (i=0; i < SELF->subsong->nrofchans; i++) {
+    for (int i=0; i < SELF->subsong->nrofchans; i++) {
         handlePattern(SELF, i);
         if(SELF->voices[i].instrument != -1) {// mute?
             handleInstrument(SELF, i); //do volume and pitch things
@@ -1394,12 +1392,12 @@ static void clearSoundBuffers(JT1Player* SELF) {
 
 int jaytrax_loadSong(JT1Player* SELF, JT1Song* sng) {
     SELF->song = sng;
-    jaytrax_playSubSong(SELF, 0);
+    jaytrax_changeSubsong(SELF, 0);
     return 1;
 }
 
 // This function ensures that the play routine is called properly and everything is initialized in a good way
-void jaytrax_playSubSong(JT1Player* SELF, int subsongnr) {
+void jaytrax_changeSubsong(JT1Player* SELF, int subsongnr) {
     int maat, pos, t;
     JT1Order* order;
 
@@ -1535,14 +1533,6 @@ void jaytrax_setInterpolation(JT1Player* SELF, uint8_t id) {
     jaymix_setInterp(&SELF->itp, id);
 }
 
-typedef struct TempVars TempVars;
-struct TempVars {
-    int32_t synthPos;
-    int32_t sampPos;
-    uint8_t sampDirection;
-};
-
-//backup
 void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, int32_t frequency) {
     int16_t ic, is;
     int32_t r;
@@ -1688,8 +1678,12 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
         }
         
         if(SELF->timeCnt == frameLen) {
-            TempVars temp[SE_NROFCHANS];
             int32_t tempdelaycnt;
+            struct {
+                int32_t synthPos;
+                int32_t sampPos;
+                uint8_t sampDirection;
+            } temp[SE_NROFCHANS];
             
             tempdelaycnt = SELF->delayCnt;
             for(ic=0; ic < SE_NROFCHANS; ic++) {

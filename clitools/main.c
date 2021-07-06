@@ -123,10 +123,10 @@ int main(int argc, char* argv[]) {
                             break;
                         } else if (vk == VK_F1) {
                             subtune = --subtune<0 ? subtune_total-1 : subtune;
-                            jaytrax_playSubSong(jay, subtune);
+                            jaytrax_changeSubsong(jay, subtune);
                         } else if (vk == VK_F2) {
                             subtune = (subtune+1) % subtune_total;
-                            jaytrax_playSubSong(jay, subtune);
+                            jaytrax_changeSubsong(jay, subtune);
                             isPlaying = 1;
                         } else if (vk == VK_F3) {
                             interp = --interp<0 ? INTERP_COUNT-1 : interp;
@@ -135,8 +135,7 @@ int main(int argc, char* argv[]) {
                             interp = (interp+1) % INTERP_COUNT;
                             jaytrax_setInterpolation(jay, interp);
                         } else if (vk == VK_SPACE) {
-                            if (isPlaying) jaytrax_pauseSong(jay);
-                            else jaytrax_continueSong(jay);
+                            isPlaying ? jaytrax_pauseSong(jay) : jaytrax_continueSong(jay);
                             isPlaying = !isPlaying;
                         }
                         winmm_leaveCrit();
