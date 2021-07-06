@@ -102,14 +102,49 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
         int32_t loopLen = vc->endpoint - vc->looppoint;
         
         doneSmp = 0;
-        if (1 && vc->sampledata) { //sample render mark I-A
+        if (vc->sampledata) {
             
             if (!vc->wavePtr) continue;
             if (vc->samplepos < 0) continue;
             fItp = SELF->itp->fItp;
             
             while (doneSmp < numSamples) {
-                tempBuf[doneSmp++] = vc->wavePtr[vc->samplepos>>8]; //fItp(vc->wavePtr, vc->samplepos, 0xFFFFFFFF);
+                int16_t tapArr[32] = {0};
+                int32_t tapPos = vc->samplepos>>8;
+                uint8_t tapDir = vc->curdirecflg;
+                uint8_t frac   = vc->samplepos ^ (0xFF * vc->curdirecflg);
+                
+                //slow, but better than nothing
+                //also, not centered
+                for (int i=0; i < SELF->itp->numTaps; i++) {
+                    tapArr[i] = vc->wavePtr[tapPos];
+                    
+                    if (vc->curdirecflg) { //backwards
+                        tapPos--;
+                        
+                        if (tapPos < (vc->looppoint>>8)) {
+                            tapPos += 1;
+                            tapDir = 0;
+                        }
+                    } else { //forwards
+                        tapPos++;
+                        
+                        if (tapPos >= (vc->endpoint>>8)) {
+                            if (vc->loopflg) { //has loop
+                                if(vc->bidirecflg) { //bidi
+                                    tapPos -= 1;
+                                    tapDir = 1;
+                                } else { //straight
+                                    tapPos -= (loopLen>>8);
+                                }
+                            } else { //oneshot
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                tempBuf[doneSmp++] = fItp(tapArr, frac, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                 
                 if (vc->curdirecflg) { //backwards
                     vc->samplepos -= vc->freqOffset;
@@ -118,7 +153,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                         vc->samplepos  += vc->freqOffset;
                         vc->curdirecflg = 0;
                     }
-                } else { // forwards
+                } else { //forwards
                     vc->samplepos += vc->freqOffset;
                     
                     if (vc->samplepos >= vc->endpoint) {

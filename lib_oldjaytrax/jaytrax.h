@@ -232,7 +232,6 @@ struct JT1Player {
     int16_t     overlapCnt;   // Used to store how much overlap we have already rendered
     uint16_t    delayCnt;		// Internal counter used for delay
     int32_t     tempBuf[MIXBUF_LEN * MIXBUF_NR];
-    int16_t     sampleSpool[SAMPSPOOLSIZE];
     Interpolator* itp;
 
     int32_t	    playMode;		    // in which mode is the replayer? Song or patternmode?
