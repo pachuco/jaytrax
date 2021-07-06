@@ -1573,7 +1573,7 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
 			r += (nos*2);
 		} else {
 			if (!SELF->song || !SELF->subsong || SELF->subsong->nrofchans == 0) {
-				for(is=0; is < nos; is++) { //c lean renderbuffer
+				for(is=0; is < nos; is++) { //clean renderbuffer
 					outbuf[r++] = 0;
 					outbuf[r++] = 0;
 				}

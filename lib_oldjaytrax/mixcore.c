@@ -122,7 +122,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                         tapPos--;
                         
                         if (tapPos < (vc->looppoint>>8)) {
-                            tapPos += 1;
+                            tapPos += 2;
                             tapDir = 0;
                         }
                     } else { //forwards
@@ -131,7 +131,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                         if (tapPos >= (vc->endpoint>>8)) {
                             if (vc->loopflg) { //has loop
                                 if(vc->bidirecflg) { //bidi
-                                    tapPos -= 1;
+                                    tapPos -= 2;
                                     tapDir = 1;
                                 } else { //straight
                                     tapPos -= (loopLen>>8);
