@@ -109,36 +109,18 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
             fItp = SELF->itp->fItp;
             
             while (doneSmp < numSamples) {
-                int32_t delta, dif, nos;
-                int32_t maxSmp = numSamples - doneSmp;
-                
-                if (vc->curdirecflg) {
-                    dif   = vc->samplepos - vc->looppoint;
-                    delta = vc->freqOffset * -1;
-                } else {
-                    dif = (vc->endpoint - 1) - vc->samplepos;
-                    delta = vc->freqOffset * 1;
-                }
-                
-                nos = ((dif ^ 0xFF) / vc->freqOffset) + 1;
-                if (nos > maxSmp) nos = maxSmp;
-                if (!nos) printf("a");
-                
-                //playback of sample
-                for (is=0; is < nos; is++) {
-                    //assert(CHKPOS(vc));
-                    //this is wrong because it reads outside loops instead of wrapping taps
-                    tempBuf[doneSmp++] = vc->wavePtr[vc->samplepos>>8]; //fItp(vc->wavePtr, vc->samplepos, 0xFFFFFFFF);
-                    vc->samplepos += delta;
-                }
-                vc->samplepos += nos <= 0 ? delta : 0; //this happens at the edge of a sample
+                tempBuf[doneSmp++] = vc->wavePtr[vc->samplepos>>8]; //fItp(vc->wavePtr, vc->samplepos, 0xFFFFFFFF);
                 
                 if (vc->curdirecflg) { //backwards
+                    vc->samplepos -= vc->freqOffset;
+                    
                     if (vc->samplepos < vc->looppoint) {
                         vc->samplepos  += vc->freqOffset;
                         vc->curdirecflg = 0;
                     }
                 } else { // forwards
+                    vc->samplepos += vc->freqOffset;
+                    
                     if (vc->samplepos >= vc->endpoint) {
                         if (vc->loopflg) { //has loop
                             if(vc->bidirecflg) { //bidi
