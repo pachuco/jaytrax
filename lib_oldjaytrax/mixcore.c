@@ -111,8 +111,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
             while (doneSmp < numSamples) {
                 int16_t tapArr[32] = {0};
                 int32_t tapPos = vc->samplepos>>8;
-                uint8_t tapDir = vc->curdirecflg;
-                uint8_t frac   = vc->samplepos ^ (0xFF * vc->curdirecflg);
+                uint8_t tapDir = 0;
                 
                 //slow, but better than nothing
                 //also, not centered
@@ -144,7 +143,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                     }
                 }
                 
-                tempBuf[doneSmp++] = fItp(tapArr, frac, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
+                tempBuf[doneSmp++] = fItp(tapArr, vc->samplepos&0xFF, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
                 
                 if (vc->curdirecflg) { //backwards
                     vc->samplepos -= vc->freqOffset;
