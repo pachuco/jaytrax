@@ -119,7 +119,7 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 for (int i=0; i < SELF->itp->numTaps; i++) {
                     tapArr[i] = vc->wavePtr[tapPos];
                     
-                    if (vc->curdirecflg) { //backwards
+                    if (tapDir) { //backwards
                         tapPos--;
                         
                         if (tapPos < (vc->looppoint>>8)) {
