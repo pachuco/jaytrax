@@ -830,7 +830,6 @@ static void playInstrument(JT1Player* SELF, int32_t channr, int32_t instNum, int
         vc->endpoint = ins->endpoint<<8;
         vc->loopflg = ins->loopflg;
         vc->bidirecflg = ins->bidirecflg;
-        vc->curdirecflg = 0;
 
         vc->freqdel = ins->fmdelay;
         for (i=0; i<SE_WAVES_INST; i++) {
@@ -925,7 +924,7 @@ static void handleSong(JT1Player* SELF) {
                             pos++;
                         }
                         //oops! starting position too far!
-                        if (pos == 256) { //WARN: >= 256?
+                        if (pos == 256) { //!WARN: >= 256?
                             SELF->playFlg = 0;
                             isSkipLoop = 1;
                             break;
@@ -1359,7 +1358,6 @@ static void clearSoundBuffers(JT1Player* SELF) {
         vc->looppoint = 0;
         vc->loopflg = 0;
         vc->bidirecflg = 0;
-        vc->curdirecflg = 0;
         
         vc->wavePtr     = NULL;
         vc->waveLength  = 0;
@@ -1425,7 +1423,7 @@ void jaytrax_changeSubsong(JT1Player* SELF, int subsongnr) {
             pos++;
         }
         //oops! starting position too far!
-        if (pos == 256) return; //WARN: >= 256?
+        if (pos == 256) return; //!WARN: >= 256?
 
         endpos-=lastmaat;
         //endpos-=maat;
@@ -1592,7 +1590,7 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
                     
                     //calculate frequency
                     if (vc->curfreq < 10) vc->curfreq = 10;
-                    vc->freqOffset = (256*vc->curfreq)/frequency;
+                    vc->freqOffset = (256*vc->curfreq)/frequency * (vc->freqOffset<0 ? -1 : 1);
                     
                     if (vc->curpan == 0) { //panning?
                         vc->gainMainL = 256; //center
@@ -1682,7 +1680,7 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
             struct {
                 int32_t synthPos;
                 int32_t sampPos;
-                uint8_t sampDirection;
+                int32_t freqOffset;
             } temp[SE_NROFCHANS];
             
             tempdelaycnt = SELF->delayCnt;
@@ -1691,7 +1689,7 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
                 
                 temp[ic].synthPos      = vc->synthPos;
                 temp[ic].sampPos       = vc->samplepos;
-                temp[ic].sampDirection = vc->curdirecflg;
+                temp[ic].freqOffset    = vc->freqOffset;
             }
             
             if (outbuf && SELF->song && SELF->subsong && SELF->subsong->nrofchans != 0) {
@@ -1748,7 +1746,7 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
                 
                 vc->synthPos    = temp[ic].synthPos;
                 vc->samplepos   = temp[ic].sampPos;
-                vc->curdirecflg = temp[ic].sampDirection;
+                vc->freqOffset  = temp[ic].freqOffset;
             }
             
             //Update song pointers

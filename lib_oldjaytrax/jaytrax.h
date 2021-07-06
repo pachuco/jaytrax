@@ -186,14 +186,13 @@ struct JT1Voice {
     int32_t  endpoint;
     uint8_t  loopflg;
     uint8_t  bidirecflg;
-    uint8_t  curdirecflg;
     int32_t  synthPos;
     int32_t  samplepos;
     
     //immediate render vars
     int16_t*       wavePtr;
     int32_t        waveLength;
-    uint32_t       freqOffset;
+    int32_t        freqOffset;
     int16_t        gainMainL;
     int16_t        gainMainR;
     int16_t        gainEchoL;

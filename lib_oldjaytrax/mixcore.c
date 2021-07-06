@@ -90,7 +90,8 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
     int32_t  tempBuf[MIXBUF_LEN];
     int32_t  ic, is, doneSmp;
     int32_t* outBuf = &SELF->tempBuf[0];
-    int32_t chanNr = SELF->subsong->nrofchans;
+    int32_t  chanNr = SELF->subsong->nrofchans;
+    
     
     assert(numSamples <= MIXBUF_LEN);
     memset(&outBuf[0], 0, numSamples * MIXBUF_NR * sizeof(int32_t));
@@ -144,22 +145,21 @@ void jaymix_mixCore(JT1Player* SELF, int32_t numSamples) {
                 }
                 
                 tempBuf[doneSmp++] = fItp(tapArr, vc->samplepos&0xFF, 0xFFFFFFFF); //vc->wavePtr[vc->samplepos>>8];
+                vc->samplepos += vc->freqOffset;
                 
-                if (vc->curdirecflg) { //backwards
-                    vc->samplepos -= vc->freqOffset;
-                    
+                
+                
+                if (vc->freqOffset < 0) { //backwards
                     if (vc->samplepos < vc->looppoint) {
+                        vc->freqOffset *= -1;
                         vc->samplepos  += vc->freqOffset;
-                        vc->curdirecflg = 0;
                     }
                 } else { //forwards
-                    vc->samplepos += vc->freqOffset;
-                    
                     if (vc->samplepos >= vc->endpoint) {
                         if (vc->loopflg) { //has loop
                             if(vc->bidirecflg) { //bidi
-                                vc->samplepos -= vc->freqOffset;
-                                vc->curdirecflg  = 1;
+                                vc->freqOffset *= -1;
+                                vc->samplepos += vc->freqOffset;
                             } else { //straight
                                 vc->samplepos -= loopLen;
                             }
