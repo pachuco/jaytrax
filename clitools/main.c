@@ -104,11 +104,11 @@ int main(int argc, char* argv[]) {
     jay = jaytrax_init();
     
     if (jxsfile_readSong(argv[1], &song)==0) {
-		if (jaytrax_loadSong(jay, song)) {
-			if (winmm_openMixer(&wf, &audioCB)) {
+        if (jaytrax_loadSong(jay, song)) {
+            if (winmm_openMixer(&wf, &audioCB)) {
                 updateDisplay();
                 isPlaying = 1;
-				for (;;) {
+                for (;;) {
                     DWORD vk;
                     
                     if (getKeydownVK(&vk)) {
@@ -142,11 +142,11 @@ int main(int argc, char* argv[]) {
                         winmm_leaveCrit();
                         updateDisplay();
                     }
-					SleepEx(1, 1);
-					// do other stuff
-				}
-			} else FAIL("Cannot open mixer.");
-		} else FAIL("Invalid song.")
+                    SleepEx(1, 1);
+                    // do other stuff
+                }
+            } else FAIL("Cannot open mixer.");
+        } else FAIL("Invalid song.")
     } else FAIL("Cannot load file.");
     
     return 0;

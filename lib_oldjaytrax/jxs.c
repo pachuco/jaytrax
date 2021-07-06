@@ -117,9 +117,9 @@ static int struct_readInst(JT1Inst* dest, size_t len, FILE* fin) {
         dest[i].startpoint    = t.startpoint;
         dest[i].looppoint     = t.looppoint;
         dest[i].endpoint      = t.endpoint;
-		dest[i].hasSampData   = t.hasSampData ? 1 : 0; //this was a sampdata pointer in original jaytrax
+        dest[i].hasSampData   = t.hasSampData ? 1 : 0; //this was a sampdata pointer in original jaytrax
         dest[i].samplelength  = t.samplelength;
-		//memcpy(&dest[i].waves, &t.waves, J3457_WAVES_INST * J3457_SAMPS_WAVE * sizeof(int16_t));
+        //memcpy(&dest[i].waves, &t.waves, J3457_WAVES_INST * J3457_SAMPS_WAVE * sizeof(int16_t));
         fread(&dest->waves, 2, J3457_WAVES_INST * J3457_SAMPS_WAVE, fin);
     }
     return ferror(fin);
@@ -141,7 +141,7 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
     
     if (!(fin = fopen(path, "rb"))) FAIL(ERR_FILEIO);
     setbuf(fin, buf);
-	
+    
     //song
     if((song = (JT1Song*)calloc(1, sizeof(JT1Song)))) {
         int version;
@@ -182,7 +182,7 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
                 
                 if (ferror(fin)) FAIL(ERR_BADSONG);
             } else FAIL(ERR_MALLOC);
-			
+            
             //instruments
             if ((song->instruments = (JT1Inst**)calloc(nrInst, sizeof(JT1Inst*)))) {
                 if (!(song->samples = (uint8_t**)calloc(nrInst, sizeof(uint8_t*)))) FAIL(ERR_MALLOC);
@@ -192,7 +192,7 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
                         if (struct_readInst(inst, 1, fin)) FAIL(ERR_BADSONG);
                         
                         //patch old instrument to new
-						if (version == 3456) {
+                        if (version == 3456) {
                             inst->sharing = 0;
                             inst->loopflg = 0;
                             inst->bidirecflg = 0;
@@ -200,16 +200,16 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
                             inst->looppoint = 0;
                             inst->endpoint = 0;
                             //silly place to put a pointer
-							if (inst->hasSampData) {
-								inst->startpoint=0;
-								inst->endpoint=(inst->samplelength/2);
-								inst->looppoint=0;
-							}
-						}
+                            if (inst->hasSampData) {
+                                inst->startpoint=0;
+                                inst->endpoint=(inst->samplelength/2);
+                                inst->looppoint=0;
+                            }
+                        }
                         
                         //sample data
                         if (inst->hasSampData) {
-							//inst->samplelength is in bytes, not samples
+                            //inst->samplelength is in bytes, not samples
                             if(!(song->samples[i] = (uint8_t*)calloc(inst->samplelength, sizeof(uint8_t)))) FAIL(ERR_MALLOC);
                             fread(song->samples[i], 1, inst->samplelength, fin);
                             if (ferror(fin)) FAIL(ERR_BADSONG);

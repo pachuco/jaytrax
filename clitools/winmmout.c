@@ -93,7 +93,7 @@ BOOL winmm_openMixer(WinmmFormat* wf, WinmmCallBack* cb) {
     winmm_closeMixer();
     
     callBack = cb;
-	memcpy(&frmt, wf, sizeof(WinmmFormat));
+    memcpy(&frmt, wf, sizeof(WinmmFormat));
     
     wfx.nSamplesPerSec = frmt.sampleRate;
     wfx.wBitsPerSample = frmt.bits;

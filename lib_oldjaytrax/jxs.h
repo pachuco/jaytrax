@@ -50,7 +50,7 @@ struct f_JT1Header {
     int16_t         PAD0E;
     int16_t         PAD0F;
     int16_t         PAD10;
-	int16_t         PAD11;
+    int16_t         PAD11;
 } __attribute__((__packed__));
 
 typedef struct f_JT1Subsong f_JT1Subsong;
@@ -93,7 +93,7 @@ struct f_JT1Effect {
     int32_t         effecttype;
     int8_t          oscflg;
     int8_t          reseteffect;
-	int16_t         PAD00;
+    int16_t         PAD00;
 } __attribute__((__packed__));
 
 // inst is the structure which has the entire instrument definition.
@@ -121,8 +121,8 @@ struct f_JT1Inst {
     int16_t         PAD01;
     int16_t         PAD02;
     int16_t         PAD03;
-	int16_t         PAD04;
-	int16_t         PAD05;
+    int16_t         PAD04;
+    int16_t         PAD05;
     f_JT1Effect     fx[J3457_EFF_INST];
     char            samplename[192]; // path naar de gebruikte sample (was _MAX_PATH lang... is nu getruncate naar 192)(in de toekomst nog kleiner?)
     int32_t         PAD06;

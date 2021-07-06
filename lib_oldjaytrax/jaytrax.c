@@ -16,22 +16,22 @@ uint8_t isStaticInit = 0;
 //void SoundEngine::DeAllocate()
 
 static void handleEffects(JT1Player* SELF, int32_t channr) {
-	int32_t f;
-	for (f=0; f<SE_EFF_INST; f++) {
+    int32_t f;
+    for (f=0; f<SE_EFF_INST; f++) {
         JT1Voice* vc; JT1VoiceEffect* vfx; JT1Inst* ins; JT1Effect* fx;
-		int16_t s;
+        int16_t s;
         
         vc  = &SELF->voices[channr];
         ins = SELF->song->instruments[vc->instrument];
         fx  = &ins->fx[f];
         vfx = &vc->fx[f];
         
-		// increase oscilator
-		s = (int16_t) fx->oscspd;
-		vfx->osccnt += s;
-		vfx->osccnt &= 255;
+        // increase oscilator
+        s = (int16_t) fx->oscspd;
+        vfx->osccnt += s;
+        vfx->osccnt &= 255;
 
-		switch (fx->effecttype) {
+        switch (fx->effecttype) {
             case 0: //none
                 break;
             case 1: { //negate
@@ -423,8 +423,8 @@ static void handleEffects(JT1Player* SELF, int32_t channr) {
                     int32_t Vbp_next;
                     int32_t Vlp_next;
                     int32_t Vbp;
-                    int32_t	Vlp;
-                    int32_t	Vhp;
+                    int32_t Vlp;
+                    int32_t Vhp;
                     int32_t Vi;
                     int32_t s;
                     int32_t delta_t;
@@ -507,8 +507,8 @@ static void handleEffects(JT1Player* SELF, int32_t channr) {
                     int32_t Vbp_next;
                     int32_t Vlp_next;
                     int32_t Vbp;
-                    int32_t	Vlp;
-                    int32_t	Vhp;
+                    int32_t Vlp;
+                    int32_t Vhp;
                     int32_t Vi;
                     int32_t s;
                     int32_t delta_t;
@@ -592,8 +592,8 @@ static void handleEffects(JT1Player* SELF, int32_t channr) {
                     int32_t Vbp_next;
                     int32_t Vlp_next;
                     int32_t Vbp;
-                    int32_t	Vlp;
-                    int32_t	Vhp;
+                    int32_t Vlp;
+                    int32_t Vhp;
                     int32_t Vi;
                     int32_t s;
                     int32_t delta_t;
@@ -687,165 +687,165 @@ static void handleEffects(JT1Player* SELF, int32_t channr) {
                     }
                 }
                 break;
-		}
-	}
+        }
+    }
 }
 
 static void handleInstrument(JT1Player* SELF, int32_t channr) {
     JT1Voice* vc; JT1Inst* ins;
-	int32_t vol, freq, pan;
+    int32_t vol, freq, pan;
     
     vc = &SELF->voices[channr];
     ins = SELF->song->instruments[vc->instrument];
     
     //vol
-	if (ins->amwave == 0) { //volume wave?
-		vol = 0;
-	} else {
-		vc->volcnt += ins->amspd;
-		if (vc->volcnt >= 256) {
-			vc->volcnt -= 256;
-			vc->volcnt += ins->amlooppoint;
-			if(vc->volcnt >= 256) {
-				vc->volcnt = ins->amlooppoint;
-			}
-		}
+    if (ins->amwave == 0) { //volume wave?
+        vol = 0;
+    } else {
+        vc->volcnt += ins->amspd;
+        if (vc->volcnt >= 256) {
+            vc->volcnt -= 256;
+            vc->volcnt += ins->amlooppoint;
+            if(vc->volcnt >= 256) {
+                vc->volcnt = ins->amlooppoint;
+            }
+        }
 
-		vol = vc->waves[(256*(ins->amwave-1))+vc->volcnt];
-		vol = vol+32768;
-		vol /= 6;
-		vol = -vol;                //10930;
-		if (vol <-10000) vol = -10000;
-	}	
+        vol = vc->waves[(256*(ins->amwave-1))+vc->volcnt];
+        vol = vol+32768;
+        vol /= 6;
+        vol = -vol;                //10930;
+        if (vol <-10000) vol = -10000;
+    }   
 
     //last but not least, the master volume
-	vol += 10000;
-	vol *= ins->mastervol;
-	vol >>=8;
-	vol *= SELF->masterVolume; //and the replayers master master volume
-	vol >>=8;
-	vol -= 10000;
-	vc->curvol = vol;
+    vol += 10000;
+    vol *= ins->mastervol;
+    vol >>=8;
+    vol *= SELF->masterVolume; //and the replayers master master volume
+    vol >>=8;
+    vol -= 10000;
+    vc->curvol = vol;
     //if(vc->buf) vc->buf->SetVolume(vol);
 
     //update panning
-	if(ins->panwave == 0) { //panning wave?
-		pan = 0;
-	} else {
-		vc->pancnt += ins->panspd;
-		if (vc->pancnt >= 256) {
-			vc->pancnt -= 256;
-			vc->pancnt += ins->panlooppoint;
-			if(vc->pancnt >= 256) {
-				vc->pancnt = ins->panlooppoint;
-			}
-		}
+    if(ins->panwave == 0) { //panning wave?
+        pan = 0;
+    } else {
+        vc->pancnt += ins->panspd;
+        if (vc->pancnt >= 256) {
+            vc->pancnt -= 256;
+            vc->pancnt += ins->panlooppoint;
+            if(vc->pancnt >= 256) {
+                vc->pancnt = ins->panlooppoint;
+            }
+        }
 
-		pan = vc->waves[(256*(ins->panwave-1))+vc->pancnt];
-		pan >>=7;
-	}	
+        pan = vc->waves[(256*(ins->panwave-1))+vc->pancnt];
+        pan >>=7;
+    }   
     //if(vc->buf) vc->buf->SetPan(pan);
-	vc->curpan = pan;
-	
+    vc->curpan = pan;
+    
     //update freq
-	int32_t k;
-	k = 0;
-	k = SELF->song->arpTable[(ins->arpeggio*16)+vc->arpcnt];
-	vc->arpcnt++;
-	vc->arpcnt&=15;
+    int32_t k;
+    k = 0;
+    k = SELF->song->arpTable[(ins->arpeggio*16)+vc->arpcnt];
+    vc->arpcnt++;
+    vc->arpcnt&=15;
 
-	freq = frequencyTable[ins->finetune][k+vc->curnote]; 
+    freq = frequencyTable[ins->finetune][k+vc->curnote]; 
 
-	if(vc->freqdel) {
-		vc->freqdel--;
-	} else {
-		if(ins->fmwave != 0) { //frequency wave?
-			vc->freqcnt += ins->fmspd;
-			if (vc->freqcnt >= 256) {
-				vc->freqcnt -= 256;
-				vc->freqcnt += ins->fmlooppoint;
-				if(vc->freqcnt >= 256) {
-					vc->freqcnt = ins->fmlooppoint;
-				}
-			}
-			freq -= vc->waves[(256*(ins->fmwave-1))+vc->freqcnt];
-		}
-	}
-	freq += vc->bendadd;
-	vc->curfreq = freq;
-	
+    if(vc->freqdel) {
+        vc->freqdel--;
+    } else {
+        if(ins->fmwave != 0) { //frequency wave?
+            vc->freqcnt += ins->fmspd;
+            if (vc->freqcnt >= 256) {
+                vc->freqcnt -= 256;
+                vc->freqcnt += ins->fmlooppoint;
+                if(vc->freqcnt >= 256) {
+                    vc->freqcnt = ins->fmlooppoint;
+                }
+            }
+            freq -= vc->waves[(256*(ins->fmwave-1))+vc->freqcnt];
+        }
+    }
+    freq += vc->bendadd;
+    vc->curfreq = freq;
+    
     //update pitchbend
     
-	if(vc->bendspd != 0) {
-		if(vc->bendspd >0) {
-			if(vc->bendadd < vc->destfreq) {
-				vc->bendadd += vc->bendspd;
-				if(vc->bendadd > vc->destfreq) {
-					vc->bendadd = vc->destfreq;
-				}
-			}
-		} else {
-			if(vc->bendadd > vc->destfreq) {
-				vc->bendadd += vc->bendspd;
-				if(vc->bendadd < vc->destfreq) {
-					vc->bendadd = vc->destfreq;
-				}
-			}
-		}
-	}
+    if(vc->bendspd != 0) {
+        if(vc->bendspd >0) {
+            if(vc->bendadd < vc->destfreq) {
+                vc->bendadd += vc->bendspd;
+                if(vc->bendadd > vc->destfreq) {
+                    vc->bendadd = vc->destfreq;
+                }
+            }
+        } else {
+            if(vc->bendadd > vc->destfreq) {
+                vc->bendadd += vc->bendspd;
+                if(vc->bendadd < vc->destfreq) {
+                    vc->bendadd = vc->destfreq;
+                }
+            }
+        }
+    }
 }
 
 static void playInstrument(JT1Player* SELF, int32_t channr, int32_t instNum, int32_t note) {
     JT1Voice* vc; JT1Inst* ins;
-	int32_t f;
+    int32_t f;
     
     // instruments init
-	if(instNum > SELF->song->nrofinst) return; // not allowed!
+    if(instNum > SELF->song->nrofinst) return; // not allowed!
     vc = &SELF->voices[channr];
-	if(vc->instrument == -1 && instNum == 0) return; //geen instrument 0 op een gemute channel...er was namelijk geen previous instrument
+    if(vc->instrument == -1 && instNum == 0) return; //geen instrument 0 op een gemute channel...er was namelijk geen previous instrument
     ins = SELF->song->instruments[instNum-1];
     
-	vc->arpcnt = 0;
-	vc->volcnt = 0;
-	vc->pancnt = 0;
-	vc->freqcnt = 0;
-	vc->curnote = note;
-	vc->curfreq = 0;
-	vc->bendtonote = note;
-	vc->bendadd = 0;
-	vc->destfreq = 0;
-	vc->bendspd = 0;
+    vc->arpcnt = 0;
+    vc->volcnt = 0;
+    vc->pancnt = 0;
+    vc->freqcnt = 0;
+    vc->curnote = note;
+    vc->curfreq = 0;
+    vc->bendtonote = note;
+    vc->bendadd = 0;
+    vc->destfreq = 0;
+    vc->bendspd = 0;
 
-	if(instNum) { // do not copy if 0
-		int32_t i;
+    if(instNum) { // do not copy if 0
+        int32_t i;
         
         //TODO: check sample usage
-		if(!ins->sharing) { // no sample sharing
-			vc->sampledata = SELF->song->samples[instNum-1];
-		} else {
-			vc->sampledata = SELF->song->samples[ins->sharing-1];
-		}
-		vc->samplepos = ins->startpoint<<8;
-		vc->looppoint = ins->looppoint<<8;
-		vc->endpoint = ins->endpoint<<8;
-		vc->loopflg = ins->loopflg;
-		vc->bidirecflg = ins->bidirecflg;
-		vc->curdirecflg = 0;
+        if(!ins->sharing) { // no sample sharing
+            vc->sampledata = SELF->song->samples[instNum-1];
+        } else {
+            vc->sampledata = SELF->song->samples[ins->sharing-1];
+        }
+        vc->samplepos = ins->startpoint<<8;
+        vc->looppoint = ins->looppoint<<8;
+        vc->endpoint = ins->endpoint<<8;
+        vc->loopflg = ins->loopflg;
+        vc->bidirecflg = ins->bidirecflg;
+        vc->curdirecflg = 0;
 
-		vc->freqdel = ins->fmdelay;
-		for (i=0; i<SE_WAVES_INST; i++) {
-			if (ins->resetwave[i]) memcpy(&vc->waves[i*256], &ins->waves[i*256], 256 * sizeof(int16_t));
-		}
-		vc->instrument = instNum-1;
-	}
+        vc->freqdel = ins->fmdelay;
+        for (i=0; i<SE_WAVES_INST; i++) {
+            if (ins->resetwave[i]) memcpy(&vc->waves[i*256], &ins->waves[i*256], 256 * sizeof(int16_t));
+        }
+        vc->instrument = instNum-1;
+    }
     
     // effects init
-	for (f=0; f<SE_EFF_INST; f++) {
+    for (f=0; f<SE_EFF_INST; f++) {
         JT1Effect* fx; JT1VoiceEffect* vfx;
         
         fx  = &SELF->song->instruments[vc->instrument]->fx[f];
         vfx = &vc->fx[f];
-		if (fx->effecttype && fx->reseteffect) {
+        if (fx->effecttype && fx->reseteffect) {
             vfx->osccnt = 0;
             vfx->fxcnt1 = 0;
             vfx->fxcnt2 = 0;
@@ -854,19 +854,19 @@ static void playInstrument(JT1Player* SELF, int32_t channr, int32_t instNum, int
             vfx->Vhp    = 0;
             vfx->Vbp    = 0;
             vfx->Vlp    = 0;
-		}
-	}
+        }
+    }
 }
 
 static void handleSong(JT1Player* SELF) {
     int16_t i;
     int32_t step;
     
-	if (!SELF->playFlg) return; 
-	if (SELF->pauseFlg) return;
-	
-	SELF->patternDelay--;
-	if (SELF->patternDelay==0) {
+    if (!SELF->playFlg) return; 
+    if (SELF->pauseFlg) return;
+    
+    SELF->patternDelay--;
+    if (SELF->patternDelay==0) {
         step = SELF->playMode == SE_PM_SONG ? SELF->playStep : SELF->patternOffset;
         
         if ((step&1) == 0) { // change the groove
@@ -874,11 +874,11 @@ static void handleSong(JT1Player* SELF) {
         } else {
             SELF->playSpeed = 8 + SELF->subsong->groove;
         }
-		SELF->patternDelay = SELF->playSpeed;
+        SELF->patternDelay = SELF->playSpeed;
         
         if (SELF->playMode == SE_PM_PATTERN) {
-			SELF->patternOffset++;
-			SELF->patternOffset %= SELF->patternLength;
+            SELF->patternOffset++;
+            SELF->patternOffset %= SELF->patternLength;
         } else {
             for (i=0; i < SELF->subsong->nrofchans; i++) {
                 JT1Voice* vc = &SELF->voices[i];
@@ -890,13 +890,13 @@ static void handleSong(JT1Player* SELF) {
                     vc->songpos++;
                 }
             }
-			
+            
             SELF->playStep++;
             if (SELF->playStep==64) {
                 SELF->playStep=0;
                 SELF->playPosition++;
             }
-			
+            
             //has endpos been reached?
             if (SELF->playPosition == SELF->subsong->endpos && SELF->playStep == SELF->subsong->endstep) {
                 if (SELF->subsong->songloop) {  //does song loop?
@@ -937,7 +937,7 @@ static void handleSong(JT1Player* SELF) {
                         vc->songpos = pos;
                         vc->patpos  = endpos;
                     }
-					
+                    
                     if (!isSkipLoop) {
                         SELF->playPosition = SELF->subsong->looppos;
                         SELF->playStep     = SELF->subsong->loopstep;
@@ -950,19 +950,19 @@ static void handleSong(JT1Player* SELF) {
                     SELF->playStep     = SELF->subsong->songstep;
                 }
             }
-		}
-	}
+        }
+    }
 }
 
 static void handleScript(JT1Player* SELF, int32_t f,int32_t s, int32_t d, int32_t p, int32_t channr) { //note, script,dstnote,param,channr
     JT1Voice* vc; JT1Inst* ins;
-	int32_t a;
+    int32_t a;
     
     vc = &SELF->voices[channr];
-	if(vc->instrument==-1) return; //no change
+    if(vc->instrument==-1) return; //no change
     ins = SELF->song->instruments[vc->instrument];
     
-	switch(s) {
+    switch(s) {
         default:
         case 0:
             return;
@@ -1268,24 +1268,24 @@ static void handleScript(JT1Player* SELF, int32_t f,int32_t s, int32_t d, int32_
         case 76: //Fire External Event
             //TODO: add this effect
             break;
-	}
+    }
 }
 
 static void handlePattern(JT1Player* SELF, int32_t channr) {
     JT1Voice* vc; JT1Row* row;
-	int32_t pat,off;
-	int32_t f,d,s,p;
+    int32_t pat,off;
+    int32_t f,d,s,p;
     
-	if (SELF->pauseFlg) return;
-	if (!SELF->playFlg) return; 
-	if (SELF->patternDelay != SELF->playSpeed) return;
-	
+    if (SELF->pauseFlg) return;
+    if (!SELF->playFlg) return; 
+    if (SELF->patternDelay != SELF->playSpeed) return;
+    
     vc = &SELF->voices[channr];
     
     if (SELF->playMode == SE_PM_PATTERN) {
-		if (channr > 0) return;  // just play channel 0
-		pat = SELF->currentPattern;
-		off = SELF->patternOffset;
+        if (channr > 0) return;  // just play channel 0
+        pat = SELF->currentPattern;
+        off = SELF->patternOffset;
     } else {
         if (SELF->subsong->mute[channr]) return;
         off = vc->patpos;
@@ -1294,100 +1294,100 @@ static void handlePattern(JT1Player* SELF, int32_t channr) {
 
     row = &SELF->song->patterns[(pat*64)+off];
     //init instrument
-	f = row->srcnote;
-	if (f) playInstrument(SELF, channr, row->inst, f);
+    f = row->srcnote;
+    if (f) playInstrument(SELF, channr, row->inst, f);
 
     //handle special effects
-	s = row->script;
-	d = row->dstnote;
-	p = row->param;
-	handleScript(SELF, f, s, d, p, channr);
+    s = row->script;
+    d = row->dstnote;
+    p = row->param;
+    handleScript(SELF, f, s, d, p, channr);
 }
 
 static void advanceSong(JT1Player* SELF) {
     int i;
     
-	handleSong(SELF);
-	for (i=0; i < SELF->subsong->nrofchans; i++) {
-		handlePattern(SELF, i);
-		if(SELF->voices[i].instrument != -1) {// mute?
-			handleInstrument(SELF, i); //do volume and pitch things
-			handleEffects(SELF, i);    //do instrument effects 
-		}
-	}
+    handleSong(SELF);
+    for (i=0; i < SELF->subsong->nrofchans; i++) {
+        handlePattern(SELF, i);
+        if(SELF->voices[i].instrument != -1) {// mute?
+            handleInstrument(SELF, i); //do volume and pitch things
+            handleEffects(SELF, i);    //do instrument effects 
+        }
+    }
 }
 
 static void PlayPattern(JT1Player* SELF, int PatternNr) {
-	SELF->playFlg = 1;
-	SELF->currentPattern = PatternNr;
-	SELF->patternOffset = 63;
-	SELF->patternDelay = 1;
-	SELF->playMode = SE_PM_PATTERN;
-	SELF->playSpeed = SELF->song->subsongs[0]->songspd - SELF->song->subsongs[0]->groove;
+    SELF->playFlg = 1;
+    SELF->currentPattern = PatternNr;
+    SELF->patternOffset = 63;
+    SELF->patternDelay = 1;
+    SELF->playMode = SE_PM_PATTERN;
+    SELF->playSpeed = SELF->song->subsongs[0]->songspd - SELF->song->subsongs[0]->groove;
 }
 
 static void clearSoundBuffers(JT1Player* SELF) {
-	int32_t i,j;
+    int32_t i,j;
 
-	// clear delaybuffers
+    // clear delaybuffers
     memset(SELF->overlapBuffer,    0, WANTEDOVERLAP*2*sizeof(int16_t));
-	memset(SELF->leftDelayBuffer,  0, 65536*sizeof(int16_t));
-	memset(SELF->rightDelayBuffer, 0, 65536*sizeof(int16_t));
+    memset(SELF->leftDelayBuffer,  0, 65536*sizeof(int16_t));
+    memset(SELF->rightDelayBuffer, 0, 65536*sizeof(int16_t));
 
-	//initialize channel data
-	for (i=0;i<SE_NROFCHANS;i++) {
+    //initialize channel data
+    for (i=0;i<SE_NROFCHANS;i++) {
         JT1Voice* vc = &SELF->voices[i];
         
-		vc->songpos = 0;
-		vc->patpos = 0;
-		vc->instrument = -1;
-		vc->volcnt = 0;
-		vc->arpcnt = 0;
-		vc->pancnt = 0;
-		vc->curnote = 0;
-		vc->curfreq = 0;
-		vc->bendadd = 0;
-		vc->destfreq = 0;
-		vc->bendspd = 0;
-		vc->freqcnt = 0;
-		vc->freqdel = 0;
-		vc->sampledata = NULL;
-		vc->endpoint = 0;
+        vc->songpos = 0;
+        vc->patpos = 0;
+        vc->instrument = -1;
+        vc->volcnt = 0;
+        vc->arpcnt = 0;
+        vc->pancnt = 0;
+        vc->curnote = 0;
+        vc->curfreq = 0;
+        vc->bendadd = 0;
+        vc->destfreq = 0;
+        vc->bendspd = 0;
+        vc->freqcnt = 0;
+        vc->freqdel = 0;
+        vc->sampledata = NULL;
+        vc->endpoint = 0;
         vc->synthPos = 0;
-		vc->samplepos = 0;
-		vc->curvol = 0;
-		vc->curpan = 0;
-		vc->bendtonote = 0;
-		vc->looppoint = 0;
-		vc->loopflg = 0;
-		vc->bidirecflg = 0;
-		vc->curdirecflg = 0;
-		
-		vc->wavePtr		= NULL;
-		vc->waveLength	= 0;
-		vc->freqOffset	= 0;
-		vc->gainMainL	= 0;
-		vc->gainMainR	= 0;
-		vc->gainEchoL	= 0;
-		vc->gainEchoR	= 0;
-		
-		for(j=0;j<4;j++) {
+        vc->samplepos = 0;
+        vc->curvol = 0;
+        vc->curpan = 0;
+        vc->bendtonote = 0;
+        vc->looppoint = 0;
+        vc->loopflg = 0;
+        vc->bidirecflg = 0;
+        vc->curdirecflg = 0;
+        
+        vc->wavePtr     = NULL;
+        vc->waveLength  = 0;
+        vc->freqOffset  = 0;
+        vc->gainMainL   = 0;
+        vc->gainMainR   = 0;
+        vc->gainEchoL   = 0;
+        vc->gainEchoR   = 0;
+        
+        for(j=0;j<4;j++) {
             JT1VoiceEffect* vfx = &vc->fx[j];
             
-			vfx->fxcnt1 = 0;
-			vfx->fxcnt2 = 0;
-			vfx->osccnt = 0;
-			vfx->a0 = 0;
-			vfx->b1 = 0;
-			vfx->b2 = 0;
-			vfx->y1 = 0;
-			vfx->y2 = 0;
-			vfx->Vhp = 0;
-			vfx->Vbp = 0;
-			vfx->Vlp = 0;
-		}
-		memset(vc->waves, 0, 4096*sizeof(int16_t));
-	}
+            vfx->fxcnt1 = 0;
+            vfx->fxcnt2 = 0;
+            vfx->osccnt = 0;
+            vfx->a0 = 0;
+            vfx->b1 = 0;
+            vfx->b2 = 0;
+            vfx->y1 = 0;
+            vfx->y2 = 0;
+            vfx->Vhp = 0;
+            vfx->Vbp = 0;
+            vfx->Vlp = 0;
+        }
+        memset(vc->waves, 0, 4096*sizeof(int16_t));
+    }
 }
 
 //---------------------API
@@ -1400,87 +1400,87 @@ int jaytrax_loadSong(JT1Player* SELF, JT1Song* sng) {
 
 // This function ensures that the play routine is called properly and everything is initialized in a good way
 void jaytrax_playSubSong(JT1Player* SELF, int subsongnr) {
-	int maat, pos, t;
-	JT1Order* order;
+    int maat, pos, t;
+    JT1Order* order;
 
-	if (subsongnr > SELF->song->nrofsongs) return;
-	SELF->subsongNr = subsongnr;
-	SELF->subsong = SELF->song->subsongs[subsongnr];
-	clearSoundBuffers(SELF);
+    if (subsongnr > SELF->song->nrofsongs) return;
+    SELF->subsongNr = subsongnr;
+    SELF->subsong = SELF->song->subsongs[subsongnr];
+    clearSoundBuffers(SELF);
 
-	for(t=0; t < SE_NROFCHANS; t++) {
-		JT1Voice* vc;
+    for(t=0; t < SE_NROFCHANS; t++) {
+        JT1Voice* vc;
         int endpos, lastmaat;
         
         vc = &SELF->voices[t];
         
-		maat = pos = lastmaat = 0;
-		order = SELF->subsong->orders[t];
-		endpos = (SELF->subsong->songpos * 64) + SELF->subsong->songstep - 1; //minus 1 because we immediately start with the new note
-		while (pos<256) {
-			if (maat >= endpos) {
-				if(pos != endpos) pos--;
-				break;
-			}
-			lastmaat=maat;
-			maat+=order[pos].patlen;
-			pos++;
-		}
+        maat = pos = lastmaat = 0;
+        order = SELF->subsong->orders[t];
+        endpos = (SELF->subsong->songpos * 64) + SELF->subsong->songstep - 1; //minus 1 because we immediately start with the new note
+        while (pos<256) {
+            if (maat >= endpos) {
+                if(pos != endpos) pos--;
+                break;
+            }
+            lastmaat=maat;
+            maat+=order[pos].patlen;
+            pos++;
+        }
         //oops! starting position too far!
-		if (pos == 256) return; //WARN: >= 256?
+        if (pos == 256) return; //WARN: >= 256?
 
-		endpos-=lastmaat;
+        endpos-=lastmaat;
         //endpos-=maat;
-		endpos &=63;
-		
-		vc->songpos = pos;
-		vc->patpos  = endpos;
-	}
+        endpos &=63;
+        
+        vc->songpos = pos;
+        vc->patpos  = endpos;
+    }
 
-	SELF->patternDelay = 1;
-	SELF->playFlg = 1;
-	SELF->pauseFlg = 0;
-	SELF->playSpeed = 8 + SELF->subsong->groove;
+    SELF->patternDelay = 1;
+    SELF->playFlg = 1;
+    SELF->pauseFlg = 0;
+    SELF->playSpeed = 8 + SELF->subsong->groove;
     //SELF->playSpeed = 8;
 
-	if (SELF->subsong->songspd != 0) {
-		float t;
-		t  = (float)SELF->subsong->songspd; //bpm
-		t /= 60.0;                    //bps
-		t *= 32.0;
-		SELF->timeCnt = SELF->timeSpd = (int)(44100.0/t);
-	}
+    if (SELF->subsong->songspd != 0) {
+        float t;
+        t  = (float)SELF->subsong->songspd; //bpm
+        t /= 60.0;                    //bps
+        t *= 32.0;
+        SELF->timeCnt = SELF->timeSpd = (int)(44100.0/t);
+    }
 
-	if(SELF->subsong->songstep == 0) {
-		SELF->playPosition = SELF->subsong->songpos - 1;
-	} else {
-		SELF->playPosition = SELF->subsong->songpos;
-	}
-	SELF->playStep  = SELF->subsong->songstep - 1;
-	SELF->playStep &= 63;
+    if(SELF->subsong->songstep == 0) {
+        SELF->playPosition = SELF->subsong->songpos - 1;
+    } else {
+        SELF->playPosition = SELF->subsong->songpos;
+    }
+    SELF->playStep  = SELF->subsong->songstep - 1;
+    SELF->playStep &= 63;
 }
 
 void jaytrax_stopSong(JT1Player* SELF) {
-	SELF->playFlg  = 0;
-	SELF->pauseFlg = 0;
-	SELF->playMode = SE_PM_SONG;
-	if(SELF->song) {
-		SELF->playPosition = SELF->subsong->songpos;
-		SELF->playStep     = SELF->subsong->songstep;
-	}
+    SELF->playFlg  = 0;
+    SELF->pauseFlg = 0;
+    SELF->playMode = SE_PM_SONG;
+    if(SELF->song) {
+        SELF->playPosition = SELF->subsong->songpos;
+        SELF->playStep     = SELF->subsong->songstep;
+    }
 }
 
 void jaytrax_pauseSong(JT1Player* SELF) {
-	SELF->pauseFlg = 1;
+    SELF->pauseFlg = 1;
 }
 
 void jaytrax_continueSong(JT1Player* SELF) {
-	SELF->pauseFlg = 0;
+    SELF->pauseFlg = 0;
 }
 
 JT1Player* jaytrax_init() {
     JT1Player* SELF = calloc(1, sizeof(JT1Player));
-	//lazy static init
+    //lazy static init
     if (!isStaticInit) {
         int32_t i, j;
         double f,y;
@@ -1506,28 +1506,28 @@ JT1Player* jaytrax_init() {
     }
     
     //init instance
-	SELF->overlapCnt = 0;
-	
-	SELF->playPosition = 0;	 // waar is de song nu?
-	SELF->playStep = 0;
-	SELF->subsongNr = 0; 
-	SELF->playFlg = 0; 
-	SELF->pauseFlg = 0;
-
-	SELF->patternDelay = 0;
-	SELF->playSpeed = 0;
-	SELF->masterVolume = 256;
-	SELF->playMode = SE_PM_SONG;
-    jaymix_setInterp(&SELF->itp, ITP_CUBIC);
-	SELF->song = NULL;
-	SELF->subsong = NULL;
-
-	//initialize rendering counters and speed
-	SELF->timeCnt = 2200;
-	SELF->timeSpd = 2200;
+    SELF->overlapCnt = 0;
     
-	clearSoundBuffers(SELF);
-	SELF->delayCnt=0;
+    SELF->playPosition = 0;  // waar is de song nu?
+    SELF->playStep = 0;
+    SELF->subsongNr = 0; 
+    SELF->playFlg = 0; 
+    SELF->pauseFlg = 0;
+
+    SELF->patternDelay = 0;
+    SELF->playSpeed = 0;
+    SELF->masterVolume = 256;
+    SELF->playMode = SE_PM_SONG;
+    jaymix_setInterp(&SELF->itp, ITP_CUBIC);
+    SELF->song = NULL;
+    SELF->subsong = NULL;
+
+    //initialize rendering counters and speed
+    SELF->timeCnt = 2200;
+    SELF->timeSpd = 2200;
+    
+    clearSoundBuffers(SELF);
+    SELF->delayCnt=0;
     return SELF;
 }
 
@@ -1537,102 +1537,102 @@ void jaytrax_setInterpolation(JT1Player* SELF, uint8_t id) {
 
 typedef struct TempVars TempVars;
 struct TempVars {
-	int32_t synthPos;
-	int32_t sampPos;
-	uint8_t sampDirection;
+    int32_t synthPos;
+    int32_t sampPos;
+    uint8_t sampDirection;
 };
 
 //backup
 void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, int32_t frequency) {
-	int16_t ic, is;
-	int32_t r;
-	int16_t amplification;							// amount to amplify afterwards
-	uint16_t echodelaytime;					//delaytime for echo (differs for MIDI or songplayback)
-	int16_t chanNr;
-	// we calc nrofsamples samples in blocks of 'timeCnt' big (de songspd)
-	
-	r = 0;
+    int16_t ic, is;
+    int32_t r;
+    int16_t amplification;                          // amount to amplify afterwards
+    uint16_t echodelaytime;                 //delaytime for echo (differs for MIDI or songplayback)
+    int16_t chanNr;
+    // we calc nrofsamples samples in blocks of 'timeCnt' big (de songspd)
+    
+    r = 0;
     echodelaytime = amplification = 0;
-	while (nrofsamples > 0) {
+    while (nrofsamples > 0) {
         int32_t availOvlap, frameLen;
         int16_t nos;
-		
+        
         frameLen = (SELF->timeSpd * frequency) / 44100;
         availOvlap = MIN(WANTEDOVERLAP, frameLen);
-		if (SELF->timeCnt<nrofsamples) {
-			nos = SELF->timeCnt;   //Complete block
-			SELF->timeCnt = frameLen;
-		} else {
-			nos = nrofsamples;  //Last piece
-			SELF->timeCnt = SELF->timeCnt - nos; 
-		}
-		nrofsamples-=nos;
-		
-		if (!outbuf) {
-			//times two for stereo
-			r += (nos*2);
-		} else {
-			if (!SELF->song || !SELF->subsong || SELF->subsong->nrofchans == 0) {
-				for(is=0; is < nos; is++) { //clean renderbuffer
-					outbuf[r++] = 0;
-					outbuf[r++] = 0;
-				}
-			} else {
-				chanNr = SELF->subsong->nrofchans;
-				
-				//preparation of wave pointers and freq offset
-				for(ic=0; ic < chanNr; ic++) {
-					JT1Voice* vc;
-					int16_t instnr;
-					int16_t volMain, volEcho;
-					
-					vc = &SELF->voices[ic];
-					instnr = vc->instrument;
-					if (instnr == -1) { // mute?
-						vc->wavePtr  = NULL;
-					} else {
-						if(vc->sampledata) {
-							vc->wavePtr  = (int16_t*)vc->sampledata;
-						} else {
-							JT1Inst* inst = SELF->song->instruments[instnr];
-							vc->wavePtr    = &vc->waves[256*inst->waveform];
-							vc->waveLength = ((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
-						}
-					}
-					
-					//calculate frequency
-					if (vc->curfreq < 10) vc->curfreq = 10;
-					vc->freqOffset = (256*vc->curfreq)/frequency;
-					
-					if (vc->curpan == 0) { //panning?
-						vc->gainMainL = 256; //center
-						vc->gainMainR = 256;
-					} else {
-						if (vc->curpan > 0) {
-							vc->gainMainL = 256-(vc->curpan);
-							vc->gainMainR = 256;
-						} else {
-							vc->gainMainL = 256;
-							vc->gainMainR = 256+(vc->curpan);
-						}
-					}
-					
-					//gains
-					volMain = (vc->curvol+10000)/39;
-					if (volMain > 256) volMain = 256;
-					volEcho = SELF->subsong->delayamount[ic];
-					
-					//premultiply volumes
-					vc->gainMainL = (vc->gainMainL * volMain)>>8;
-					vc->gainMainR = (vc->gainMainR * volMain)>>8;
-					vc->gainEchoL = (vc->gainMainL * volEcho)>>8;
-					vc->gainEchoR = (vc->gainMainR * volEcho)>>8;
-				}
-				amplification = SELF->subsong->amplification;
-				echodelaytime = SELF->subsong->delaytime;
-				
+        if (SELF->timeCnt<nrofsamples) {
+            nos = SELF->timeCnt;   //Complete block
+            SELF->timeCnt = frameLen;
+        } else {
+            nos = nrofsamples;  //Last piece
+            SELF->timeCnt = SELF->timeCnt - nos; 
+        }
+        nrofsamples-=nos;
+        
+        if (!outbuf) {
+            //times two for stereo
+            r += (nos*2);
+        } else {
+            if (!SELF->song || !SELF->subsong || SELF->subsong->nrofchans == 0) {
+                for(is=0; is < nos; is++) { //clean renderbuffer
+                    outbuf[r++] = 0;
+                    outbuf[r++] = 0;
+                }
+            } else {
+                chanNr = SELF->subsong->nrofchans;
+                
+                //preparation of wave pointers and freq offset
+                for(ic=0; ic < chanNr; ic++) {
+                    JT1Voice* vc;
+                    int16_t instnr;
+                    int16_t volMain, volEcho;
+                    
+                    vc = &SELF->voices[ic];
+                    instnr = vc->instrument;
+                    if (instnr == -1) { // mute?
+                        vc->wavePtr  = NULL;
+                    } else {
+                        if(vc->sampledata) {
+                            vc->wavePtr  = (int16_t*)vc->sampledata;
+                        } else {
+                            JT1Inst* inst = SELF->song->instruments[instnr];
+                            vc->wavePtr    = &vc->waves[256*inst->waveform];
+                            vc->waveLength = ((inst->wavelength-1)<<8)+255;  //fixed point 8 bit (last 8 bits should be set)
+                        }
+                    }
+                    
+                    //calculate frequency
+                    if (vc->curfreq < 10) vc->curfreq = 10;
+                    vc->freqOffset = (256*vc->curfreq)/frequency;
+                    
+                    if (vc->curpan == 0) { //panning?
+                        vc->gainMainL = 256; //center
+                        vc->gainMainR = 256;
+                    } else {
+                        if (vc->curpan > 0) {
+                            vc->gainMainL = 256-(vc->curpan);
+                            vc->gainMainR = 256;
+                        } else {
+                            vc->gainMainL = 256;
+                            vc->gainMainR = 256+(vc->curpan);
+                        }
+                    }
+                    
+                    //gains
+                    volMain = (vc->curvol+10000)/39;
+                    if (volMain > 256) volMain = 256;
+                    volEcho = SELF->subsong->delayamount[ic];
+                    
+                    //premultiply volumes
+                    vc->gainMainL = (vc->gainMainL * volMain)>>8;
+                    vc->gainMainR = (vc->gainMainR * volMain)>>8;
+                    vc->gainEchoL = (vc->gainMainL * volEcho)>>8;
+                    vc->gainEchoR = (vc->gainMainR * volEcho)>>8;
+                }
+                amplification = SELF->subsong->amplification;
+                echodelaytime = SELF->subsong->delaytime;
+                
                 //main render
-				while (nos > 0) {
+                while (nos > 0) {
                     int16_t morenos  = MIN(nos, MIXBUF_LEN);
                     int16_t* overBuf = &SELF->overlapBuffer[0];
                     int16_t* delLBuf = &SELF->leftDelayBuffer[0];
@@ -1641,26 +1641,26 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
                     
                     
                     jaymix_mixCore(SELF, morenos);
-					
-					for(is=0; is < morenos; is++) {
-						int32_t lsample, rsample, echosamplel, echosampler;
-						int32_t off = MIXBUF_NR * is;
+                    
+                    for(is=0; is < morenos; is++) {
+                        int32_t lsample, rsample, echosamplel, echosampler;
+                        int32_t off = MIXBUF_NR * is;
                         int32_t ocnt = SELF->overlapCnt;
                         int32_t delcnt = SELF->delayCnt;
-						
-						lsample     = tempBuf[off + BUF_MAINL];
-						rsample     = tempBuf[off + BUF_MAINR];
-						echosamplel = tempBuf[off + BUF_ECHOL];
-						echosampler = tempBuf[off + BUF_ECHOR];
-						
-						lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
-						lsample *= amplification;
-						lsample /= 100;
+                        
+                        lsample     = tempBuf[off + BUF_MAINL];
+                        rsample     = tempBuf[off + BUF_MAINR];
+                        echosamplel = tempBuf[off + BUF_ECHOL];
+                        echosampler = tempBuf[off + BUF_ECHOR];
+                        
+                        lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
+                        lsample *= amplification;
+                        lsample /= 100;
                         CLAMP(lsample, -32760, 32760);
-						
-						rsample  = ((rsample / chanNr) + delRBuf[delcnt]) / 2;
-						rsample *= amplification;
-						rsample /= 100;
+                        
+                        rsample  = ((rsample / chanNr) + delRBuf[delcnt]) / 2;
+                        rsample *= amplification;
+                        rsample /= 100;
                         CLAMP(rsample, -32760, 32760);
                         
                         //interpolate from overlap buffer
@@ -1673,32 +1673,32 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
                             SELF->overlapCnt++;
                         }
                         
-						outbuf[r++] = lsample;
-						outbuf[r++] = rsample;
-						
-						delLBuf[delcnt] = ((echosamplel / chanNr) + delLBuf[delcnt]) / 2;
-						delRBuf[delcnt] = ((echosampler / chanNr) + delRBuf[delcnt]) / 2;
-						SELF->delayCnt++;
-						SELF->delayCnt %= echodelaytime / (44100 / frequency);
-					}
-					
-					nos -= morenos;
-				}
-			}
-		}
-		
-		if(SELF->timeCnt == frameLen) {
-			TempVars temp[SE_NROFCHANS];
-			int32_t tempdelaycnt;
+                        outbuf[r++] = lsample;
+                        outbuf[r++] = rsample;
+                        
+                        delLBuf[delcnt] = ((echosamplel / chanNr) + delLBuf[delcnt]) / 2;
+                        delRBuf[delcnt] = ((echosampler / chanNr) + delRBuf[delcnt]) / 2;
+                        SELF->delayCnt++;
+                        SELF->delayCnt %= echodelaytime / (44100 / frequency);
+                    }
+                    
+                    nos -= morenos;
+                }
+            }
+        }
+        
+        if(SELF->timeCnt == frameLen) {
+            TempVars temp[SE_NROFCHANS];
+            int32_t tempdelaycnt;
             
-			tempdelaycnt = SELF->delayCnt;
-			for(ic=0; ic < SE_NROFCHANS; ic++) {
-				JT1Voice* vc = &SELF->voices[ic];
-				
-				temp[ic].synthPos      = vc->synthPos;
-				temp[ic].sampPos       = vc->samplepos;
-				temp[ic].sampDirection = vc->curdirecflg;
-			}
+            tempdelaycnt = SELF->delayCnt;
+            for(ic=0; ic < SE_NROFCHANS; ic++) {
+                JT1Voice* vc = &SELF->voices[ic];
+                
+                temp[ic].synthPos      = vc->synthPos;
+                temp[ic].sampPos       = vc->samplepos;
+                temp[ic].sampDirection = vc->curdirecflg;
+            }
             
             if (outbuf && SELF->song && SELF->subsong && SELF->subsong->nrofchans != 0) {
                 int16_t nos2 = availOvlap;
@@ -1716,49 +1716,49 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
                     
                     jaymix_mixCore(SELF, morenos);
                     
-					for(is=0; is < morenos; is++) {
-						int32_t lsample, rsample;
-						int32_t off = MIXBUF_NR * is;
+                    for(is=0; is < morenos; is++) {
+                        int32_t lsample, rsample;
+                        int32_t off = MIXBUF_NR * is;
                         int32_t ocnt = SELF->overlapCnt;
                         int32_t delcnt = SELF->delayCnt;
-						
-						lsample  = tempBuf[off + BUF_MAINL];
-						rsample  = tempBuf[off + BUF_MAINR];
-						
-						lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
-						lsample *= amplification;
-						lsample /= 100;
+                        
+                        lsample  = tempBuf[off + BUF_MAINL];
+                        rsample  = tempBuf[off + BUF_MAINR];
+                        
+                        lsample  = ((lsample / chanNr) + delLBuf[delcnt]) / 2;
+                        lsample *= amplification;
+                        lsample /= 100;
                         CLAMP(lsample, -32760, 32760);
-						
-						rsample  = ((rsample / chanNr) + delRBuf[delcnt]) / 2;
-						rsample *= amplification;
-						rsample /= 100;
+                        
+                        rsample  = ((rsample / chanNr) + delRBuf[delcnt]) / 2;
+                        rsample *= amplification;
+                        rsample /= 100;
                         CLAMP(rsample, -32760, 32760);
-						
-						overBuf[(availOvlap - ocnt)*2+0] = lsample;
-						overBuf[(availOvlap - ocnt)*2+1] = rsample;
-						
-						SELF->delayCnt++;
-						SELF->delayCnt %= echodelaytime / (44100 / frequency);
-						SELF->overlapCnt--;
-					}
+                        
+                        overBuf[(availOvlap - ocnt)*2+0] = lsample;
+                        overBuf[(availOvlap - ocnt)*2+1] = rsample;
+                        
+                        SELF->delayCnt++;
+                        SELF->delayCnt %= echodelaytime / (44100 / frequency);
+                        SELF->overlapCnt--;
+                    }
                     nos2 -= morenos;
                 }
                 assert(SELF->overlapCnt == 0);
             }
-			
-			SELF->delayCnt = tempdelaycnt;
-			
-			for(ic=0; ic < SE_NROFCHANS; ic++) {
-				JT1Voice* vc = &SELF->voices[ic];
-				
-				vc->synthPos    = temp[ic].synthPos;
-				vc->samplepos   = temp[ic].sampPos;
-				vc->curdirecflg = temp[ic].sampDirection;
-			}
             
-			//Update song pointers
-			advanceSong(SELF);
-		}
-	}
+            SELF->delayCnt = tempdelaycnt;
+            
+            for(ic=0; ic < SE_NROFCHANS; ic++) {
+                JT1Voice* vc = &SELF->voices[ic];
+                
+                vc->synthPos    = temp[ic].synthPos;
+                vc->samplepos   = temp[ic].sampPos;
+                vc->curdirecflg = temp[ic].sampDirection;
+            }
+            
+            //Update song pointers
+            advanceSong(SELF);
+        }
+    }
 }
