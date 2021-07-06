@@ -1518,7 +1518,7 @@ JT1Player* jaytrax_init() {
 	SELF->playSpeed = 0;
 	SELF->masterVolume = 256;
 	SELF->playMode = SE_PM_SONG;
-    jaymix_setInterp(&SELF->itp, ITP_QUADRATIC);
+    jaymix_setInterp(&SELF->itp, ITP_CUBIC);
 	SELF->song = NULL;
 	SELF->subsong = NULL;
 
