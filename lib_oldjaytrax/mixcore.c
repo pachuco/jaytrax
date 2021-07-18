@@ -6,7 +6,7 @@
 #include "jaytrax.h"
 
 // ITP_[number of taps]_[input sample width]_[fractional precision]_[readable name]
-#define ITP_T02_S16_I08_LINEAR(P, F) ((P[0] + (P[1] - P[0]) * F)>>8)
+#define ITP_T02_S16_I08_LINEAR(P, F) (P[0]+(((P[1]-P[0])*F) >> 8))
 #define ITP_T03_S16_I15_QUADRA(P, F) (((((((((P[0] + P[2]) >> 1) - P[1]) * F) >> 16) + P[1]) - ((P[2] + P[0] + (P[0] << 1)) >> 2)) * F) >> 14) + P[0]
 #define ITP_T04_SXX_F01_CUBIC(P, F)  (P[1] + 0.5 * F*(P[2] - P[0] + F*(2.0 * P[0] - 5.0 * P[1] + 4.0 * P[2] - P[3] + F * (3.0 * (P[1] - P[2]) + P[3] - P[0]))))
 
