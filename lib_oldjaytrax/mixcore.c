@@ -45,7 +45,7 @@ static int32_t itpQuad(int16_t* buf, int32_t pos, int32_t sizeMask) {
 
 static int32_t itpCubic(int16_t* buf, int32_t pos, int32_t sizeMask) {
     int32_t p[4];
-    double frac = (double)(pos & 0xFF)/255;
+    float frac = (float)(pos & 0xFF)/256;
     
     p[0] = GET_PT(0);
     p[1] = GET_PT(1);
