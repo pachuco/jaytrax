@@ -154,5 +154,15 @@ struct f_JT1Inst {
 
 //---------------------
 
-int jxsfile_readSong(char* path, JT1Song** sngOut);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int jxsfile_readSong(const char* path, JT1Song** sngOut);
+int jxsfile_readSongMem(const uint8_t* data, size_t size, JT1Song** sngOut);
+void jxsfile_freeSong(JT1Song* song);
+
+#ifdef __cplusplus
+}
+#endif
 #endif

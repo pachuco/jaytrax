@@ -7,7 +7,9 @@
 #include "jaytrax.h"
 #include "mixcore.h"
 
+#ifndef M_PI
 #define M_PI (3.14159265359)
+#endif
 
 int32_t frequencyTable[SE_NROFFINETUNESTEPS][128];
 int16_t sineTab[256];
@@ -941,6 +943,8 @@ static void handleSong(JT1Player* SELF) {
                         SELF->playPosition = SELF->subsong->looppos;
                         SELF->playStep     = SELF->subsong->loopstep;
                     }
+
+                    SELF->loopCnt ++;
                 } else { // stop song
                     SELF->playFlg  = 0;
                     SELF->pauseFlg = 0;
@@ -1436,6 +1440,7 @@ void jaytrax_changeSubsong(JT1Player* SELF, int subsongnr) {
     SELF->patternDelay = 1;
     SELF->playFlg = 1;
     SELF->pauseFlg = 0;
+    SELF->loopCnt = 0;
     SELF->playSpeed = 8 + SELF->subsong->groove;
     //SELF->playSpeed = 8;
 
@@ -1474,7 +1479,7 @@ void jaytrax_continueSong(JT1Player* SELF) {
     SELF->pauseFlg = 0;
 }
 
-JT1Player* jaytrax_init() {
+JT1Player* jaytrax_init(void) {
     JT1Player* SELF = calloc(1, sizeof(JT1Player));
     //lazy static init
     if (!isStaticInit) {
@@ -1509,6 +1514,7 @@ JT1Player* jaytrax_init() {
     SELF->subsongNr = 0; 
     SELF->playFlg = 0; 
     SELF->pauseFlg = 0;
+    SELF->loopCnt = 0;
 
     SELF->patternDelay = 0;
     SELF->playSpeed = 0;
@@ -1525,6 +1531,10 @@ JT1Player* jaytrax_init() {
     clearSoundBuffers(SELF);
     SELF->delayCnt=0;
     return SELF;
+}
+
+void jaytrax_free(JT1Player* SELF) {
+    free(SELF);
 }
 
 void jaytrax_setInterpolation(JT1Player* SELF, uint8_t id) {
@@ -1753,4 +1763,17 @@ void jaytrax_renderChunk(JT1Player* SELF, int16_t* outbuf, int32_t nrofsamples, 
             advanceSong(SELF);
         }
     }
+}
+
+int32_t jaytrax_getLength(JT1Player* SELF, int subsongnr, int loopCnt, int frequency) {
+    int32_t length = 0;
+    int32_t lengthMax = frequency * 60 * 30;
+    int32_t frameLen;
+    jaytrax_changeSubsong(SELF, subsongnr);
+    while (SELF->playFlg && SELF->loopCnt < loopCnt && length < lengthMax) {
+        frameLen = (SELF->timeSpd * frequency) / 44100;
+        advanceSong(SELF);
+        length += frameLen;
+    }
+    return length < lengthMax ? length : -1;
 }

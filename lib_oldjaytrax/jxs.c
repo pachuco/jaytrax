@@ -6,26 +6,72 @@
 #include "jxs.h"
 #include "ioutil.h"
 
+struct memdata
+{
+    const uint8_t* data;
+    size_t remain;
+    int error;
+};
+
+void memread(void* buf, size_t size, size_t count, void* _data)
+{
+    struct memdata* data = (struct memdata*)_data;
+    size_t unread = 0;
+    size *= count;
+    if (size > data->remain)
+    {
+        unread = size - data->remain;
+        size = data->remain;
+        data->error = 1;
+    }
+    memcpy(buf, data->data, size);
+    data->data += size;
+    data->remain -= size;
+    if (unread)
+        memset(((uint8_t*)buf) + size, 0, unread);
+}
+
+int memerror(void* _data)
+{
+    struct memdata* data = (struct memdata*)_data;
+    return data->error;
+}
+
+void fileread(void* buf, size_t size, size_t count, void* _file)
+{
+    FILE* file = (FILE*)_file;
+    fread(buf, size, count, file);
+}
+
+int fileerror(void* _file)
+{
+    FILE* file = (FILE*)_file;
+    return ferror(file);
+}
+
+typedef void (*thereader)(void*, size_t, size_t, void*);
+typedef int (*theerror)(void*);
+
 //---------------------JXS3457
 
-static int struct_readHeader(JT1Song* dest, FILE* fin) {
+static int struct_readHeader(JT1Song* dest, thereader reader, theerror iferror, void* fin) {
 
     f_JT1Header t;
     
-    fread(&t, sizeof(f_JT1Header), 1, fin);
+    reader(&t, sizeof(f_JT1Header), 1, fin);
     dest->mugiversion = t.mugiversion;
     dest->nrofpats    = t.nrofpats;
     dest->nrofsongs   = t.nrofsongs;
     dest->nrofinst    = t.nrofinst;
-    return ferror(fin);
+    return iferror(fin);
 }
 
-static int struct_readSubsong(JT1Subsong* dest, size_t len, FILE* fin) {
+static int struct_readSubsong(JT1Subsong* dest, size_t len, thereader reader, theerror iferror, void* fin) {
     uint32_t i, j, k;
     f_JT1Subsong t;
     
     for (i=0; i < len; i++) {
-        fread(&t, sizeof(f_JT1Subsong), 1, fin);
+        reader(&t, sizeof(f_JT1Subsong), 1, fin);
         for (j=0; j < J3457_CHANS_SUBSONG; j++) dest[i].mute[j] = t.mute[j];
         dest[i].songspd         = t.songspd;
         dest[i].groove          = t.groove;
@@ -50,15 +96,15 @@ static int struct_readSubsong(JT1Subsong* dest, size_t len, FILE* fin) {
             }
         }
     }
-    return ferror(fin);
+    return iferror(fin);
 }
 
-static int struct_readPat(JT1Row* dest, size_t len, FILE* fin) {
+static int struct_readPat(JT1Row* dest, size_t len, thereader reader, theerror iferror, void* fin) {
     uint32_t i, j;
     f_JT1Row t[J3457_ROWS_PAT];
     
     for (i=0; i < len; i++) {
-        fread(&t, sizeof(f_JT1Row)*J3457_ROWS_PAT, 1, fin);
+        reader(&t, sizeof(f_JT1Row)*J3457_ROWS_PAT, 1, fin);
         for (j=0; j < J3457_ROWS_PAT; j++) {
             uint32_t off = i*J3457_ROWS_PAT + j;
             dest[off].srcnote = t[j].srcnote;
@@ -68,14 +114,14 @@ static int struct_readPat(JT1Row* dest, size_t len, FILE* fin) {
             dest[off].script  = t[j].script;
         }
     }
-    return ferror(fin);
+    return iferror(fin);
 }
 
-static int struct_readInst(JT1Inst* dest, size_t len, FILE* fin) {
+static int struct_readInst(JT1Inst* dest, size_t len, thereader reader, theerror iferror, void* fin) {
     uint32_t i, j;
     f_JT1Inst t;
     for (i=0; i < len; i++) {
-        fread(&t, sizeof(f_JT1Inst), 1, fin);
+        reader(&t, sizeof(f_JT1Inst), 1, fin);
         dest[i].mugiversion     = t.mugiversion;
         memcpy(&dest[i].instname, &t.instname, 32);
         dest[i].waveform        = t.waveform;
@@ -120,9 +166,9 @@ static int struct_readInst(JT1Inst* dest, size_t len, FILE* fin) {
         dest[i].hasSampData   = t.hasSampData ? 1 : 0; //this was a sampdata pointer in original jaytrax
         dest[i].samplelength  = t.samplelength;
         //memcpy(&dest[i].waves, &t.waves, J3457_WAVES_INST * J3457_SAMPS_WAVE * sizeof(int16_t));
-        fread(&dest->waves, 2, J3457_WAVES_INST * J3457_SAMPS_WAVE, fin);
+        reader(&dest->waves, 2, J3457_WAVES_INST * J3457_SAMPS_WAVE, fin);
     }
-    return ferror(fin);
+    return iferror(fin);
 }
 
 //---------------------JXS3458
@@ -131,22 +177,17 @@ static int struct_readInst(JT1Inst* dest, size_t len, FILE* fin) {
 
 //---------------------
 
-int jxsfile_readSong(char* path, JT1Song** sngOut) {
-    #define FAIL(x) {error=(x); goto _ERR;}
-    char buf[BUFSIZ];
-    FILE *fin;
+static int jxsfile_readSongCb(thereader reader, theerror iferror, void* fin, JT1Song** sngOut) {
+#define FAIL(x) {error=(x); goto _ERR;}
     JT1Song* song;
     int i;
     int error;
-    
-    if (!(fin = fopen(path, "rb"))) FAIL(ERR_FILEIO);
-    setbuf(fin, buf);
     
     //song
     if((song = (JT1Song*)calloc(1, sizeof(JT1Song)))) {
         int version;
         
-        if (struct_readHeader(song, fin)) FAIL(ERR_BADSONG);
+        if (struct_readHeader(song, reader, iferror, fin)) FAIL(ERR_BADSONG);
         //version magic
         version = song->mugiversion;
         if (version >= 3456 && version <= 3457) {
@@ -159,14 +200,14 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
             if ((song->subsongs = (JT1Subsong**)calloc(nrSubsongs, sizeof(JT1Subsong*)))) {
                 for (i=0; i < nrSubsongs; i++) {
                     if ((song->subsongs[i] = (JT1Subsong*)calloc(1, sizeof(JT1Subsong)))) {
-                        if (struct_readSubsong(song->subsongs[i], 1, fin)) FAIL(ERR_BADSONG);
+                        if (struct_readSubsong(song->subsongs[i], 1, reader, iferror, fin)) FAIL(ERR_BADSONG);
                     } else FAIL(ERR_MALLOC);
                 }
             } else FAIL(ERR_MALLOC);
             
             //patterns
             if ((song->patterns = (JT1Row*)calloc(nrRows, sizeof(JT1Row)))) {
-                if (struct_readPat(song->patterns, nrPats, fin)) FAIL(ERR_BADSONG);
+                if (struct_readPat(song->patterns, nrPats, reader, iferror, fin)) FAIL(ERR_BADSONG);
             } else FAIL(ERR_MALLOC);
             
             //pattern names. Length includes \0
@@ -174,13 +215,13 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
                 for (i=0; i < nrPats; i++) {
                     int32_t nameLen = 0;
                     
-                    fread(&nameLen, 4, 1, fin);
+                    reader(&nameLen, 4, 1, fin);
                     if ((song->patNames[i] = (char*)calloc(nameLen, sizeof(char)))) {
-                        fread(song->patNames[i], nameLen, 1, fin);
+                        reader(song->patNames[i], nameLen, 1, fin);
                     } else FAIL(ERR_MALLOC);
                 }
                 
-                if (ferror(fin)) FAIL(ERR_BADSONG);
+                if (iferror(fin)) FAIL(ERR_BADSONG);
             } else FAIL(ERR_MALLOC);
             
             //instruments
@@ -189,7 +230,7 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
                 for (i=0; i < nrInst; i++) {
                     if ((song->instruments[i] = (JT1Inst*)calloc(1, sizeof(JT1Inst)))) {
                         JT1Inst* inst = song->instruments[i];
-                        if (struct_readInst(inst, 1, fin)) FAIL(ERR_BADSONG);
+                        if (struct_readInst(inst, 1, reader, iferror, fin)) FAIL(ERR_BADSONG);
                         
                         //patch old instrument to new
                         if (version == 3456) {
@@ -211,8 +252,8 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
                         if (inst->hasSampData) {
                             //inst->samplelength is in bytes, not samples
                             if(!(song->samples[i] = (uint8_t*)calloc(inst->samplelength, sizeof(uint8_t)))) FAIL(ERR_MALLOC);
-                            fread(song->samples[i], 1, inst->samplelength, fin);
-                            if (ferror(fin)) FAIL(ERR_BADSONG);
+                            reader(song->samples[i], 1, inst->samplelength, fin);
+                            if (iferror(fin)) FAIL(ERR_BADSONG);
                         } else {
                             song->samples[i] = NULL;
                         }
@@ -221,20 +262,98 @@ int jxsfile_readSong(char* path, JT1Song** sngOut) {
             } else FAIL(ERR_MALLOC);
             
             //arpeggio table
-            fread(&song->arpTable, J3457_STEPS_ARP, J3457_ARPS_SONG, fin);
+            reader(&song->arpTable, J3457_STEPS_ARP, J3457_ARPS_SONG, fin);
+            
+            if (iferror(fin)) FAIL(ERR_BADSONG);
         } else if (version == 3458) {
             //Soon enough!
             FAIL(ERR_BADSONG);
         } else FAIL(ERR_BADSONG);
     } else FAIL(ERR_MALLOC);
     
-    if (fin) fclose(fin);
     *sngOut = song;
     return ERR_OK;
     #undef FAIL
     _ERR:
-        if (fin) fclose(fin);
-        //freesong(song);
+        jxsfile_freeSong(song);
         *sngOut = NULL;
         return error;
+}
+
+int jxsfile_readSong(const char* path, JT1Song** sngOut) {
+    char buf[BUFSIZ];
+    FILE *fin;
+    int error;
+
+    if (!(fin = fopen(path, "rb"))) return ERR_FILEIO;
+    setbuf(fin, buf);
+    
+    error = jxsfile_readSongCb(fileread, fileerror, fin, sngOut);
+    
+    fclose(fin);
+    return error;
+    
+    _ERR:
+        if (fin) fclose(fin);
+        return error;
+}
+
+int jxsfile_readSongMem(const uint8_t* data, size_t size, JT1Song** sngOut) {
+    struct memdata fin;
+    fin.data = data;
+    fin.remain = size;
+    fin.error = 0;
+    
+    return jxsfile_readSongCb(memread, memerror, &fin, sngOut);
+}
+
+void jxsfile_freeSong(JT1Song* song) {
+    if (song) {
+        int i;
+        int nrSubsongs = song->nrofsongs;
+        int nrPats     = song->nrofpats;
+        int nrInst     = song->nrofinst;
+        
+        if (song->subsongs) {
+            
+            for (i=0; i < nrSubsongs; i++) {
+                if (song->subsongs[i])
+                    free(song->subsongs[i]);
+            }
+            
+            free(song->subsongs);
+        }
+        
+        if (song->patterns) {
+            free(song->patterns);
+        }
+
+        if (song->patNames) {
+            for (i=0; i < nrPats; i++) {
+                if (song->patNames[i])
+                    free(song->patNames[i]);
+            }
+            
+            free(song->patNames);
+        }
+        
+        if (song->instruments && song->samples) {
+            for (i=0; i < nrInst; i++) {
+                if (song->instruments[i])
+                    free(song->instruments[i]);
+                if (song->samples[i])
+                    free(song->samples[i]);
+            }
+        }
+        
+        if (song->samples) {
+            free(song->samples);
+        }
+        
+        if (song->instruments) {
+            free(song->instruments);
+        }
+        
+        free(song);
+    }
 }
