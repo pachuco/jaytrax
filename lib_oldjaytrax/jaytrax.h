@@ -237,9 +237,15 @@ struct JT1Player {
     int32_t       currentPattern;     // Which pattern are we currently playing (In pattern play mode)
     int32_t       patternLength;      // Current length of a pattern (in pattern play mode)
     int32_t       patternOffset;      // Current play offset in the pattern (used for display)
+
+    int32_t       loopCnt;      // If song is meant to loop, the number of times the song has looped
 };
 
 //---------------------API
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int        jaytrax_loadSong(JT1Player* SELF, JT1Song* sng);
 void       jaytrax_changeSubsong(JT1Player* SELF, int subsongnr);
@@ -247,6 +253,12 @@ void       jaytrax_stopSong(JT1Player* SELF);
 void       jaytrax_pauseSong(JT1Player* SELF);
 void       jaytrax_continueSong(JT1Player* SELF);
 void       jaytrax_setInterpolation(JT1Player* SELF, uint8_t id);
-JT1Player* jaytrax_init();
+JT1Player* jaytrax_init(void);
+void       jaytrax_free(JT1Player* SELF);
 void       jaytrax_renderChunk(JT1Player* SELF, int16_t* renderbuf, int32_t nrofsamples, int32_t frequency);
+int32_t    jaytrax_getLength(JT1Player* SELF, int subsongnr, int loopCnt, int frequency);
+
+#ifdef __cplusplus
+}
+#endif
 #endif

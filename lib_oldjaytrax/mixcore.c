@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
-#include <windows.h>
 #include "mixcore.h"
 #include "jaytrax.h"
 
